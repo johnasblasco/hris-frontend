@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# 🏢 SNL IT SOLUTIONS — Human Resource Information System (HRIS)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Welcome to the official repository of **SNL IT Solutions**.  
+This project is part of our internal initiative to streamline human resource management through a modern and efficient **HRIS (Human Resource Information System)** platform.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Overview
 
-## React Compiler
+The **HRIS System** is a centralized web application designed to manage:
+- 👥 Employee information  
+- 🕒 Attendance and Leave tracking  
+- 💼 Recruitment and onboarding  
+- 💰 Payroll and benefits  
+- 📊 Reports and analytics  
+- ⚙️ Setup management  
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+Built with scalability, security, and usability in mind, this system empowers HR teams to manage operations seamlessly and effectively.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠️ Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+| Category | Technology |
+|-----------|-------------|
+| **Frontend** | React + TypeScript + Tailwind CSS + ShadCN UI |
+| **Backend** | Laravel (REST API) |
+| **Database** | MySQL |
+| **Version Control** | Git & GitHub |
+| **Deployment** | Vercel / Render |
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 💡 Key Features
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- 🔐 Secure Login & Role-based Access  
+- 🧾 Dynamic Dashboard  
+- 📆 Attendance & Leave Management  
+- 📁 Employee Records & Profiles  
+- 📈 Reports & Analytics  
+- ⚙️ System Setup & Configuration  
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 🧰 Installation
+
+### 1️⃣ Clone the repository
+```bash
+git clone https://github.com/SNL-IT-SOLUTIONS/hris-frontend.git
+cd hris-frontend
