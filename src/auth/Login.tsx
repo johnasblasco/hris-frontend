@@ -5,8 +5,14 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Settings, Eye, EyeOff, Smile } from 'lucide-react'
 import { motion } from "framer-motion"
+import { CandidatePortal } from '@/client/CandidatePortal'
+import { toast } from 'sonner'
+import { useNavigate } from 'react-router-dom'
+import api from '@/utils/axios'
 
 const Login = () => {
+    const navigate = useNavigate();
+    const [showLogin, setShowLogin] = useState(false)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
@@ -15,17 +21,51 @@ const Login = () => {
     const [showPointingLeft, setShowPointingLeft] = useState(false)
     const [hovered, setHovered] = useState(false)
     useEffect(() => {
-        const handleScroll = () => {
-            setShowIcon(window.scrollY > 50)
+        const handleScroll = () => setShowIcon(window.scrollY > 50)
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.ctrlKey && e.key === "F12") setShowLogin(true)
         }
         window.addEventListener('scroll', handleScroll)
-        return () => window.removeEventListener('scroll', handleScroll)
+        window.addEventListener('keydown', handleKeyDown)
+        return () => {
+            window.removeEventListener('scroll', handleScroll)
+            window.removeEventListener('keydown', handleKeyDown)
+        }
     }, [])
 
-    const handleSubmit = (e: React.FormEvent) => {
+
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
-        setTimeout(() => setIsLoading(false), 1000)
+
+        try {
+            const res = await api.post("/login", {
+                login: email,
+                password,
+            })
+
+            if (res.data.isSuccess) {
+                toast.success(res.data.message)
+
+                localStorage.setItem("token", res.data.token)
+                localStorage.setItem("user", JSON.stringify(res.data.user))
+                localStorage.setItem("role", res.data.role)
+
+                navigate("/dashboard")
+            } else {
+                toast.error(res.data.message)
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Login failed")
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+
+    if (!showLogin) {
+        return <CandidatePortal />
     }
 
     return (
@@ -85,10 +125,10 @@ const Login = () => {
                             className="space-y-6"
                         >
                             <motion.div whileHover={{ scale: 1.02 }} className="space-y-2">
-                                <Label htmlFor="email" className="text-slate-700">Email</Label>
+                                <Label htmlFor="email" className="text-slate-700">Email or Username</Label>
                                 <Input
                                     id="email"
-                                    type="email"
+                                    type="text"
                                     placeholder="salmaadnan@company.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
