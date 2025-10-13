@@ -29,6 +29,8 @@ export interface AttendanceRecord {
     date: string;
     clockIn: string;
     clockOut: string;
+    checkIn: string | null;
+    checkOut: string | null;
     hoursWorked: number;
     status: 'present' | 'absent' | 'late' | 'half-day';
 }

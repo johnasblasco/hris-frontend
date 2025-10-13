@@ -4,6 +4,7 @@ import Layout from '@/components/Layout'
 import Dashboard from '@/features/dashboard/Dashboard'
 import SettingsComponent from '@/features/settings/SettingsComponent'
 import ReportAnalytics from '@/features/report-analytics/ReportAnalytics'
+import AttendanceLeaving from '@/features/attendance-leaving/AttendanceLeaving'
 import { SetupManager } from '@/features/setup-manager/SetupManager'
 const MainRoutes = () => {
     const routes = useRoutes([
@@ -20,6 +21,7 @@ const MainRoutes = () => {
                 { path: "settings", element: <SettingsComponent /> },
                 { path: "reports-analytics", element: <ReportAnalytics /> },
                 { path: "setup-manager", element: <SetupManager /> },
+                { path: "attendance-leaving", element: <AttendanceLeaving /> },
 
             ],
         },
