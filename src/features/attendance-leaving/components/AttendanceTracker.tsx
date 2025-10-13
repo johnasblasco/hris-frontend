@@ -12,7 +12,7 @@ import type { AttendanceRecord } from '@/features/data/types';
 import { format } from 'date-fns';
 
 const AttendanceTracker = () => {
-    const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
+    const [attendance,] = useState<AttendanceRecord[]>(mockAttendance);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
     const getStatusColor = (status: string) => {

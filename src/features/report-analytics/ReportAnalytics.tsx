@@ -145,7 +145,7 @@ const ReportAnalytics = () => {
                                     fill="#8884d8"
                                     dataKey="employeeCount"
                                 >
-                                    {mockDepartments.map((entry, index) => (
+                                    {mockDepartments.map((index: any) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>

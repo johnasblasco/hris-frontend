@@ -7,7 +7,6 @@ import { HeadbarComponent } from "@/features/navbar/HeadbarComponent";
 
 const Layout = () => {
     const [activeView, setActiveView] = useState('dashboard');
-    const [, setViewMode] = useState('admin');
 
     return (
         <SidebarProvider>
@@ -18,7 +17,7 @@ const Layout = () => {
                 />
 
                 <main className="flex-1 overflow-auto">
-                    <HeadbarComponent setViewMode={setViewMode} />
+                    <HeadbarComponent />
                     <div className="p-6">
                         <Outlet context={{ activeView }} />
                     </div>

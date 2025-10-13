@@ -20,7 +20,6 @@ import {
     Database,
     Bell,
     Clock,
-    DollarSign,
     Calendar,
     AlertTriangle,
     CheckCircle,
