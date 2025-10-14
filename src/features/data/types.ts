@@ -1,26 +1,4 @@
-export interface Employee {
-    id: string;
-    employeeId: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    department: string;
-    position: string;
-    salary: number;
-    hireDate: string;
-    status: 'active' | 'inactive';
-    manager?: string;
-    avatar?: string;
-}
 
-export interface Department {
-    id: string;
-    name: string;
-    manager: string;
-    employeeCount: number;
-    budget: number;
-}
 
 export interface AttendanceRecord {
     id: string;
@@ -57,4 +35,40 @@ export interface PayrollSummary {
     deductions: number;
     netPay: number;
     payPeriod: string;
+}
+
+
+// EMPLOYEE SECTION TYPES
+export interface Department {
+    id: number;
+    name: string;
+}
+
+export interface PositionType {
+    id: number;
+    title: string;
+}
+
+export interface Employee {
+    id: number;
+    employee_id?: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string | null;
+    department_id: number | null;
+    position_id: number | null;
+    base_salary: number;
+    hire_date: string;
+    is_active: boolean;
+    manager_id: number | null;
+    department?: Department;
+    position?: PositionType;
+    manager?: Employee;
+}
+
+export interface ApiResponse<T> {
+    isSuccess: boolean;
+    message: string;
+    data: T;
 }

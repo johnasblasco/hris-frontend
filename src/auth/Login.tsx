@@ -455,13 +455,24 @@ const Login = () => {
                                         Don't Have An Account?
 
                                     </motion.p>
-                                    <div className="relative inline-block ml-2">
-                                        <motion.button
-                                            whileHover={{ scale: 1.01 }}
-                                            className={`relative hover:cursor-pointer text-indigo-600 text-xl hover:text-indigo-700 font-medium ${showPointingLeft ? "animate-hidden" : "hidden"}`}
-                                        >
-                                            Register Now
-                                        </motion.button>
+                                    <div className="relative inline-block mt-10">
+                                        <div className={`${showPointingLeft ? "flex flex-col text-start" : "hidden"}`}>
+                                            <motion.p
+                                                onClick={() => setShowPointingLeft(true)}
+                                                className="text-sm text-slate-600 hover:cursor-pointer"
+                                            >
+                                                username: superadmin
+
+                                            </motion.p>
+                                            <motion.p
+                                                onClick={() => setShowPointingLeft(true)}
+                                                className="text-sm text-slate-600 hover:cursor-pointer"
+                                            >
+                                                password: super123
+
+                                            </motion.p>
+                                        </div>
+
 
                                         <motion.img
                                             src="/pointing-left.png"
@@ -477,7 +488,7 @@ const Login = () => {
                                         animate={showPointingLeft ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                                         transition={{ duration: 0.6, ease: "easeOut" }}
                                     >
-                                        First, you need to create an account to get started. <Smile className=' ml-2 inline' />
+                                        Hi Happy Hacking!. <Smile className=' ml-2 inline' />
                                     </motion.p>
                                 </div>
                             </motion.div>

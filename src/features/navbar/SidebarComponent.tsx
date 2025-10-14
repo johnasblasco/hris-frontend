@@ -29,12 +29,12 @@ interface SidebarComponentProps {
   setActiveView: (view: string) => void;
 }
 
+
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, link: "/dashboard" },
-  { id: "employees", label: "Employees", icon: Users },
+  { id: "employees", label: "Employees", icon: Users, link: "/employees" },
   { id: "attendance-leave", label: "Attendance & Leave", icon: Clock, link: "/attendance-leaving" },
   { id: "recruitment", label: "Recruitment & Onboarding", icon: UserPlus },
-  { id: "talent", label: "Talent Management", icon: Award },
   { id: "payroll", label: "Payroll & Benefits", icon: DollarSign },
   { id: "reports", label: "Reports & Analytics", icon: BarChart3, link: "/reports-analytics" },
   { id: "setup", label: "Setup Manager", icon: Settings2, link: "/setup-manager" },
