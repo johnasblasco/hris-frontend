@@ -34,7 +34,7 @@ const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, link: "/dashboard" },
   { id: "employees", label: "Employees", icon: Users, link: "/employees" },
   { id: "attendance-leave", label: "Attendance & Leave", icon: Clock, link: "/attendance-leaving" },
-  { id: "recruitment", label: "Recruitment & Onboarding", icon: UserPlus },
+  { id: "recruitment", label: "Recruitment & Onboarding", icon: UserPlus, link: "/recruitment-onboarding" },
   { id: "payroll", label: "Payroll & Benefits", icon: DollarSign },
   { id: "reports", label: "Reports & Analytics", icon: BarChart3, link: "/reports-analytics" },
   { id: "setup", label: "Setup Manager", icon: Settings2, link: "/setup-manager" },

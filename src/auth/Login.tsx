@@ -468,7 +468,7 @@ const Login = () => {
                                                 onClick={() => setShowPointingLeft(true)}
                                                 className="text-sm text-slate-600 hover:cursor-pointer"
                                             >
-                                                password: super123
+                                                password: admin123
 
                                             </motion.p>
                                         </div>

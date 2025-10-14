@@ -13,6 +13,78 @@ export interface AttendanceRecord {
     status: 'present' | 'absent' | 'late' | 'half-day';
 }
 
+// RECRUITMENT
+export interface JobPosting {
+    id: string;
+    title: string;
+    department: string;
+    location: string;
+    type: 'Full-time' | 'Part-time' | 'Contract' | 'Intern';
+    salary: string;
+    status: 'active' | 'draft' | 'closed';
+    applications: number;
+    posted: string;
+    deadline: string;
+    description: string;
+    requirements: string[];
+    responsibilities?: string;
+}
+
+
+export interface Candidate {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    position: string;
+    stage: string;
+    source: string;
+    appliedDate: string;
+    experience: string;
+    skills: string[];
+    resume: string;
+    notes: string;
+    rating: number;
+    jobId?: string;
+}
+
+export interface Interview {
+    id: string;
+    candidateId: string;
+    candidateName: string;
+    position: string;
+    interviewer: string;
+    date: string;
+    time: string;
+    type: 'Phone Screening' | 'Technical' | 'HR' | 'Final' | 'Panel';
+    status: 'scheduled' | 'completed' | 'cancelled';
+    notes: string;
+    location?: string;
+    meetingLink?: string;
+}
+
+export interface HiredEmployee {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    position: string;
+    department: string;
+    hireDate: string;
+    startDate: string;
+    salary: string;
+    source: string;
+    experience: string;
+    skills: string[];
+    employmentType: 'Full-time' | 'Part-time' | 'Contract';
+    manager?: string;
+}
+
+
+
+
+
+
 export interface LeaveRequest {
     id: string;
     employeeId: string;
