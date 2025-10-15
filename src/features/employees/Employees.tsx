@@ -32,7 +32,8 @@ const Employees = () => {
             const result = response.data;
 
             if (result.isSuccess) {
-                setEmployees(result.data);
+
+                setEmployees(result.employees || []);
             } else {
                 throw new Error(result.message);
             }
@@ -48,9 +49,9 @@ const Employees = () => {
         try {
             // You'll need to create these API endpoints or modify existing ones
             const [deptResponse, posResponse, mgrResponse] = await Promise.all([
-                api.get('/departments'),
-                api.get('/positions'),
-                api.get('/employees?managers=true')
+                api.get('/dropdown/departments'),
+                api.get('/dropdown/position-types'),
+                api.get('/dropdown/employees')
             ]);
 
             if (deptResponse.data.isSuccess) {
@@ -74,12 +75,13 @@ const Employees = () => {
         fetchDropdownData();
     }, []);
 
+    // ✅ CORRECT: Update field names to match backend response
     const filteredEmployees = employees.filter(emp =>
         emp.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         emp.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.department?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.position?.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        (emp.department?.department_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (emp.position?.position_name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    )
 
     const getInitials = (firstName: string, lastName: string) => {
         return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -181,7 +183,7 @@ const Employees = () => {
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell>{employee.department?.name || 'N/A'}</TableCell>
+                                    <TableCell>{employee.department?.department_name || 'N/A'}</TableCell>
                                     <TableCell>{employee.position?.title || 'N/A'}</TableCell>
                                     <TableCell>
                                         <Badge variant={employee.is_active ? 'default' : 'secondary'}>
@@ -253,7 +255,7 @@ const Employees = () => {
                                 </div>
                                 <div>
                                     <Label>Department</Label>
-                                    <p className="text-sm">{selectedEmployee.department?.name || 'N/A'}</p>
+                                    <p className="text-sm">{selectedEmployee.department?.department_name || 'N/A'}</p>
                                 </div>
                                 <div>
                                     <Label>Email</Label>

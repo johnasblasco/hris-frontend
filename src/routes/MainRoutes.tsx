@@ -5,7 +5,7 @@ import Dashboard from '@/features/dashboard/Dashboard'
 import SettingsComponent from '@/features/settings/SettingsComponent'
 import ReportAnalytics from '@/features/report-analytics/ReportAnalytics'
 import AttendanceLeaving from '@/features/attendance-leaving/AttendanceLeaving'
-import { SetupManager } from '@/features/setup-manager/SetupManager'
+import SetupManager from '@/features/setup-manager/SetupManager'
 import Employees from '@/features/employees/Employees'
 import RecruitmentOnboarding from '@/features/recruitment-onboarding/RecuitmentOnboarding'
 const MainRoutes = () => {

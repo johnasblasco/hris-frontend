@@ -15,19 +15,19 @@ export interface AttendanceRecord {
 
 // RECRUITMENT
 export interface JobPosting {
-    id: string;
-    title: string;
-    department: string;
-    location: string;
-    type: 'Full-time' | 'Part-time' | 'Contract' | 'Intern';
-    salary: string;
-    status: 'active' | 'draft' | 'closed';
-    applications: number;
-    posted: string;
-    deadline: string;
-    description: string;
-    requirements: string[];
-    responsibilities?: string;
+    id: string | null;
+    title: string | null;
+    department: string | null;
+    location: string | null;
+    type: 'Full-time' | 'Part-time' | 'Contract' | 'Intern' | null;
+    salary: string | null;
+    status: 'active' | 'draft' | 'closed' | null;
+    applications: number | null;
+    posted: string | null;
+    deadline: string | null;
+    description: string | null;
+    requirements: string[] | null | any;
+    responsibilities?: string | null;
 }
 
 
@@ -56,7 +56,7 @@ export interface Interview {
     interviewer: string;
     date: string;
     time: string;
-    type: 'Phone Screening' | 'Technical' | 'HR' | 'Final' | 'Panel';
+    type: any;
     status: 'scheduled' | 'completed' | 'cancelled';
     notes: string;
     location?: string;
@@ -113,12 +113,13 @@ export interface PayrollSummary {
 // EMPLOYEE SECTION TYPES
 export interface Department {
     id: number;
-    name: string;
+    department_name: string;
 }
 
 export interface PositionType {
     id: number;
     title: string;
+    position_name: any;
 }
 
 export interface Employee {
@@ -126,6 +127,7 @@ export interface Employee {
     employee_id?: string;
     first_name: string;
     last_name: string;
+    name: string;
     email: string;
     phone: string | null;
     department_id: number | null;
@@ -137,6 +139,7 @@ export interface Employee {
     department?: Department;
     position?: PositionType;
     manager?: Employee;
+
 }
 
 export interface ApiResponse<T> {

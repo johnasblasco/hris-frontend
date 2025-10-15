@@ -1,4 +1,21 @@
-import { useState } from 'react';
+interface TransformedJobPosting {
+    id: string;
+    title: string;
+    department: string;
+    location: string;
+    type: string | null;
+    salary: string;
+    status: string;
+    applications: number;
+    posted: string;
+    deadline: string;
+    description: string;
+    requirements: string[];
+    responsibilities: string;
+}
+
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,10 +58,10 @@ import {
     Link as LinkIcon
 } from 'lucide-react';
 import { toast } from "sonner";
-import { mockJobPostings, mockCandidates, mockInterviews, mockHiredEmployees, mockDepartments, mockEmployees } from '../data/mockData';
+import { mockCandidates, mockInterviews, mockHiredEmployees, mockDepartments, mockEmployees } from '../data/mockData';
 import type { JobPosting, Candidate, Interview, HiredEmployee } from '../data/types';
+import { jobPostingAPI } from './services/api';
 
-// Recruitment stages
 const recruitmentStages = [
     { id: 'new', label: 'New Applications', color: 'bg-blue-100 text-blue-800', icon: FileText },
     { id: 'screening', label: 'Screening', color: 'bg-purple-100 text-purple-800', icon: Search },
@@ -73,28 +90,27 @@ const RecruitmentOnboarding = () => {
     const [showJobDetailDialog, setShowJobDetailDialog] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStage, setFilterStage] = useState<string>('all');
+    const [loading, setLoading] = useState(false);
 
-    // State management
-    const [jobs, setJobs] = useState<JobPosting[]>(mockJobPostings);
+    const [jobs, setJobs] = useState<TransformedJobPosting[]>([]);
+
+
     const [candidates, setCandidates] = useState<Candidate[]>(mockCandidates);
     const [interviews, setInterviews] = useState<Interview[]>(mockInterviews);
     const [hiredEmployees, setHiredEmployees] = useState<HiredEmployee[]>(mockHiredEmployees);
+    const [departments, setDepartments] = useState(mockDepartments);
 
-    // New Job Form State
-    const [newJob, setNewJob] = useState<Partial<JobPosting>>({
+    const [newJob, setNewJob] = useState({
         title: '',
-        department: '',
+        department_id: '',
         location: '',
-        type: 'Full-time',
-        salary: '',
-        status: 'active',
+        salary_range: '',
+        status: 'draft',
         description: '',
-        requirements: [],
-        responsibilities: '',
-        deadline: '',
+        posted_date: new Date().toISOString().split('T')[0],
+        deadline_date: '',
     });
 
-    // New Interview Form State
     const [newInterview, setNewInterview] = useState<Partial<Interview>>({
         candidateId: '',
         candidateName: '',
@@ -108,6 +124,46 @@ const RecruitmentOnboarding = () => {
         location: '',
         meetingLink: '',
     });
+
+    const fetchJobPostings = async () => {
+        setLoading(true);
+        try {
+            const response = await jobPostingAPI.getAll({
+                search: searchTerm,
+            });
+
+            if (response.data.isSuccess) {
+                const transformedJobs: TransformedJobPosting[] = response.data.job_postings.map((job: any) => ({
+                    id: job.id.toString(),
+                    title: job.title,
+                    department: job.department?.department_name || 'Unknown',
+                    location: job.location,
+                    type: 'Full-time',
+                    salary: job.salary_range,
+                    status: job.status,
+                    applications: 0,
+                    posted: job.posted_date,
+                    deadline: job.deadline_date,
+                    description: job.description,
+                    requirements: [],
+                    responsibilities: '',
+                }));
+
+                setJobs((prev: TransformedJobPosting[]) => [...prev, ...transformedJobs]);
+            }
+        } catch (error) {
+            console.error('Error fetching job postings:', error);
+            toast.error('Failed to fetch job postings');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'jobs' || activeTab === 'overview') {
+            fetchJobPostings();
+        }
+    }, [activeTab, searchTerm]);
 
     const getStageColor = (stage: string) => {
         const stageConfig = recruitmentStages.find(s => s.id === stage);
@@ -146,49 +202,89 @@ const RecruitmentOnboarding = () => {
         ));
         toast.success(`Candidate moved to ${getStageLabel(newStage)}`);
 
-        // If moved to offer stage, create a notification
         if (newStage === 'offer') {
             toast.success('Candidate ready for offer letter!');
         }
     };
 
-    const createJobPosting = () => {
-        if (!newJob.title || !newJob.department || !newJob.location) {
+    const createJobPosting = async () => {
+        if (!newJob.title || !newJob.department_id || !newJob.location) {
             toast.error('Please fill in all required fields');
             return;
         }
 
-        const jobPosting: JobPosting = {
-            id: `${jobs.length + 1}`,
-            title: newJob.title || '',
-            department: newJob.department || '',
-            location: newJob.location || '',
-            type: (newJob.type as any) || 'Full-time',
-            salary: newJob.salary || '',
-            status: (newJob.status as any) || 'active',
-            applications: 0,
-            posted: new Date().toISOString().split('T')[0],
-            deadline: newJob.deadline || '',
-            description: newJob.description || '',
-            requirements: newJob.requirements || [],
-            responsibilities: newJob.responsibilities || '',
-        };
+        try {
+            const response = await jobPostingAPI.create(newJob);
 
-        setJobs(prev => [...prev, jobPosting]);
-        toast.success('Job posting created successfully!');
-        setShowJobDialog(false);
-        setNewJob({
-            title: '',
-            department: '',
-            location: '',
-            type: 'Full-time',
-            salary: '',
-            status: 'active',
-            description: '',
-            requirements: [],
-            responsibilities: '',
-            deadline: '',
-        });
+            if (response.data.isSuccess) {
+                const createdJob = response.data.data;
+                const transformedJob: TransformedJobPosting = {
+                    id: createdJob.id.toString(),
+                    title: createdJob.title,
+                    department: departments.find(d => d.id.toString() === createdJob.department_id)?.name || 'Unknown',
+                    location: createdJob.location,
+                    type: 'Full-time',
+                    salary: createdJob.salary_range,
+                    status: createdJob.status,
+                    applications: 0,
+                    posted: createdJob.posted_date,
+                    deadline: createdJob.deadline_date,
+                    description: createdJob.description,
+                    requirements: [],
+                    responsibilities: '',
+                };
+
+                setJobs((prev: TransformedJobPosting[]) => [...prev, transformedJob]);
+                toast.success('Job posting created successfully!');
+                setShowJobDialog(false);
+                setNewJob({
+                    title: '',
+                    department_id: '',
+                    location: '',
+                    salary_range: '',
+                    status: 'draft',
+                    description: '',
+                    posted_date: new Date().toISOString().split('T')[0],
+                    deadline_date: '',
+                });
+            }
+        } catch (error: any) {
+            console.error('Error creating job posting:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to create job posting';
+            toast.error(errorMessage);
+        }
+    };
+
+    const updateJobStatus = async (jobId: string, status: 'active' | 'draft' | 'closed') => {
+        try {
+            const response = await jobPostingAPI.update(jobId, { status });
+
+            if (response.data.isSuccess) {
+                setJobs((prev: TransformedJobPosting[]) => prev.map(j =>
+                    j.id === jobId ? { ...j, status } : j
+                ));
+                toast.success(`Job ${status === 'closed' ? 'closed' : 'updated'}`);
+            }
+        } catch (error: any) {
+            console.error('Error updating job status:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to update job status';
+            toast.error(errorMessage);
+        }
+    };
+
+    const deleteJob = async (jobId: string) => {
+        try {
+            const response = await jobPostingAPI.archive(jobId);
+
+            if (response.data.isSuccess) {
+                setJobs((prev: TransformedJobPosting[]) => prev.filter(j => j.id !== jobId));
+                toast.success('Job posting archived successfully');
+            }
+        } catch (error: any) {
+            console.error('Error archiving job posting:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to archive job posting';
+            toast.error(errorMessage);
+        }
     };
 
     const scheduleInterview = () => {
@@ -230,18 +326,6 @@ const RecruitmentOnboarding = () => {
         });
     };
 
-    const deleteJob = (jobId: string) => {
-        setJobs(prev => prev.filter(j => j.id !== jobId));
-        toast.success('Job posting deleted');
-    };
-
-    const updateJobStatus = (jobId: string, status: 'active' | 'draft' | 'closed') => {
-        setJobs(prev => prev.map(j =>
-            j.id === jobId ? { ...j, status } : j
-        ));
-        toast.success(`Job ${status === 'closed' ? 'closed' : 'updated'}`);
-    };
-
     const sendEmail = (email: string) => {
         toast.success(`Email sent to ${email}`);
     };
@@ -257,7 +341,6 @@ const RecruitmentOnboarding = () => {
 
     const renderOverview = () => (
         <div className="space-y-6">
-            {/* Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {recruitmentMetrics.map((metric, index) => (
                     <Card key={index}>
@@ -273,7 +356,6 @@ const RecruitmentOnboarding = () => {
                 ))}
             </div>
 
-            {/* Quick Actions */}
             <Card>
                 <CardHeader>
                     <CardTitle>Quick Actions</CardTitle>
@@ -297,7 +379,6 @@ const RecruitmentOnboarding = () => {
                 </CardContent>
             </Card>
 
-            {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                     <CardHeader>
@@ -476,80 +557,95 @@ const RecruitmentOnboarding = () => {
                     <h2 className="text-2xl font-bold">Job Postings</h2>
                     <p className="text-muted-foreground">Manage your job openings</p>
                 </div>
-                <Button onClick={() => setShowJobDialog(true)}>
+                <Button onClick={() => setShowJobDialog(true)} disabled={loading}>
                     <Plus className="w-4 h-4 mr-2" />
                     Post New Job
                 </Button>
             </div>
 
-            <div className="grid gap-4">
-                {jobs.map((job) => (
-                    <Card key={job.id}>
-                        <CardHeader>
-                            <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <CardTitle>{job.title}</CardTitle>
-                                        {getStatusIcon(job.status)}
+            {loading ? (
+                <Card>
+                    <CardContent className="p-6 text-center">
+                        <div>Loading job postings...</div>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="grid gap-4">
+                    {jobs.map((job) => (
+                        <Card key={job.id}>
+                            <CardHeader>
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <CardTitle>{job.title}</CardTitle>
+                                            {getStatusIcon(job.status)}
+                                        </div>
+                                        <CardDescription className="flex items-center gap-4 mt-2">
+                                            <span className="flex items-center gap-1">
+                                                <Building2 className="w-4 h-4" />
+                                                {job.department}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <MapPin className="w-4 h-4" />
+                                                {job.location}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <DollarSign className="w-4 h-4" />
+                                                {job.salary}
+                                            </span>
+                                        </CardDescription>
                                     </div>
-                                    <CardDescription className="flex items-center gap-4 mt-2">
-                                        <span className="flex items-center gap-1">
-                                            <Building2 className="w-4 h-4" />
-                                            {job.department}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <MapPin className="w-4 h-4" />
-                                            {job.location}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <DollarSign className="w-4 h-4" />
-                                            {job.salary}
-                                        </span>
-                                    </CardDescription>
+                                    <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
+                                        {job.status}
+                                    </Badge>
                                 </div>
-                                <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
-                                    {job.status}
-                                </Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex justify-between items-center">
-                                <div className="flex gap-4 text-sm text-muted-foreground">
-                                    <span>{job.applications} applications</span>
-                                    <span>Posted: {job.posted}</span>
-                                    <span>Deadline: {job.deadline}</span>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" onClick={() => {
-                                        setSelectedJob(job);
-                                        setShowJobDetailDialog(true);
-                                    }}>
-                                        <Eye className="w-4 h-4 mr-1" />
-                                        View
-                                    </Button>
-                                    {job.status === 'active' && (
-                                        <Button variant="outline" size="sm" onClick={() => updateJobStatus(job.id, 'closed')}>
-                                            Close
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex justify-between items-center">
+                                    <div className="flex gap-4 text-sm text-muted-foreground">
+                                        <span>{job.applications} applications</span>
+                                        <span>Posted: {job.posted}</span>
+                                        <span>Deadline: {job.deadline}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={() => {
+                                            setSelectedJob(job as JobPosting);
+                                            setShowJobDetailDialog(true);
+                                        }}>
+                                            <Eye className="w-4 h-4 mr-1" />
+                                            View
                                         </Button>
-                                    )}
-                                    {job.status === 'draft' && (
-                                        <Button variant="outline" size="sm" onClick={() => updateJobStatus(job.id, 'active')}>
-                                            Publish
+                                        {job.status === 'active' && (
+                                            <Button variant="outline" size="sm" onClick={() => updateJobStatus(job.id, 'closed')}>
+                                                Close
+                                            </Button>
+                                        )}
+                                        {job.status === 'draft' && (
+                                            <Button variant="outline" size="sm" onClick={() => updateJobStatus(job.id, 'active')}>
+                                                Publish
+                                            </Button>
+                                        )}
+                                        <Button variant="outline" size="sm" onClick={() => {
+                                            if (confirm('Are you sure you want to archive this job posting?')) {
+                                                deleteJob(job.id);
+                                            }
+                                        }}>
+                                            <Trash2 className="w-4 h-4" />
                                         </Button>
-                                    )}
-                                    <Button variant="outline" size="sm" onClick={() => {
-                                        if (confirm('Are you sure you want to delete this job posting?')) {
-                                            deleteJob(job.id);
-                                        }
-                                    }}>
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    {jobs.length === 0 && !loading && (
+                        <Card>
+                            <CardContent className="p-6 text-center">
+                                <div>No job postings found.</div>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+            )}
         </div>
     );
 
@@ -833,6 +929,110 @@ const RecruitmentOnboarding = () => {
         </div>
     );
 
+    const renderJobForm = () => (
+        <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="title">Job Title *</Label>
+                    <Input
+                        id="title"
+                        placeholder="e.g., Senior Software Engineer"
+                        value={newJob.title}
+                        onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="department_id">Department *</Label>
+                    <Select
+                        value={newJob.department_id}
+                        onValueChange={(value) => setNewJob({ ...newJob, department_id: value })}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {departments.map(dept => (
+                                <SelectItem key={dept.id} value={dept.id.toString()}>
+                                    {dept.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="location">Location *</Label>
+                    <Input
+                        id="location"
+                        placeholder="e.g., New York, NY"
+                        value={newJob.location}
+                        onChange={(e) => setNewJob({ ...newJob, location: e.target.value })}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="salary_range">Salary Range</Label>
+                    <Input
+                        id="salary_range"
+                        placeholder="e.g., $70,000 - $90,000"
+                        value={newJob.salary_range}
+                        onChange={(e) => setNewJob({ ...newJob, salary_range: e.target.value })}
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="posted_date">Posted Date</Label>
+                    <Input
+                        id="posted_date"
+                        type="date"
+                        value={newJob.posted_date}
+                        onChange={(e) => setNewJob({ ...newJob, posted_date: e.target.value })}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="deadline_date">Application Deadline *</Label>
+                    <Input
+                        id="deadline_date"
+                        type="date"
+                        value={newJob.deadline_date}
+                        onChange={(e) => setNewJob({ ...newJob, deadline_date: e.target.value })}
+                    />
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="description">Job Description *</Label>
+                <Textarea
+                    id="description"
+                    placeholder="Describe the role and responsibilities..."
+                    rows={4}
+                    value={newJob.description}
+                    onChange={(e) => setNewJob({ ...newJob, description: e.target.value })}
+                />
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                    value={newJob.status}
+                    onValueChange={(value: any) => setNewJob({ ...newJob, status: value })}
+                >
+                    <SelectTrigger>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
+    );
+
     return (
         <div className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -877,7 +1077,6 @@ const RecruitmentOnboarding = () => {
                 </TabsContent>
             </Tabs>
 
-            {/* Job Posting Dialog */}
             <Dialog open={showJobDialog} onOpenChange={setShowJobDialog}>
                 <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
@@ -886,132 +1085,16 @@ const RecruitmentOnboarding = () => {
                             Add a new job posting to attract candidates
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="title">Job Title *</Label>
-                                <Input
-                                    id="title"
-                                    placeholder="e.g., Senior Software Engineer"
-                                    value={newJob.title}
-                                    onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="department">Department *</Label>
-                                <Select value={newJob.department} onValueChange={(value) => setNewJob({ ...newJob, department: value })}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select department" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {mockDepartments.map(dept => (
-                                            <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="location">Location *</Label>
-                                <Input
-                                    id="location"
-                                    placeholder="e.g., New York, NY"
-                                    value={newJob.location}
-                                    onChange={(e) => setNewJob({ ...newJob, location: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="type">Employment Type *</Label>
-                                <Select value={newJob.type} onValueChange={(value: any) => setNewJob({ ...newJob, type: value })}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Full-time">Full-time</SelectItem>
-                                        <SelectItem value="Part-time">Part-time</SelectItem>
-                                        <SelectItem value="Contract">Contract</SelectItem>
-                                        <SelectItem value="Intern">Intern</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="salary">Salary Range</Label>
-                                <Input
-                                    id="salary"
-                                    placeholder="e.g., $70,000 - $90,000"
-                                    value={newJob.salary}
-                                    onChange={(e) => setNewJob({ ...newJob, salary: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="deadline">Application Deadline *</Label>
-                                <Input
-                                    id="deadline"
-                                    type="date"
-                                    value={newJob.deadline}
-                                    onChange={(e) => setNewJob({ ...newJob, deadline: e.target.value })}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="description">Job Description *</Label>
-                            <Textarea
-                                id="description"
-                                placeholder="Describe the role and responsibilities..."
-                                rows={4}
-                                value={newJob.description}
-                                onChange={(e) => setNewJob({ ...newJob, description: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="responsibilities">Key Responsibilities</Label>
-                            <Textarea
-                                id="responsibilities"
-                                placeholder="List main responsibilities..."
-                                rows={3}
-                                value={newJob.responsibilities}
-                                onChange={(e) => setNewJob({ ...newJob, responsibilities: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="requirements">Requirements (comma-separated)</Label>
-                            <Input
-                                id="requirements"
-                                placeholder="e.g., 5+ years experience, React, Node.js"
-                                value={newJob.requirements?.join(', ')}
-                                onChange={(e) => setNewJob({ ...newJob, requirements: e.target.value.split(',').map(r => r.trim()) })}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="status">Status</Label>
-                            <Select value={newJob.status} onValueChange={(value: any) => setNewJob({ ...newJob, status: value })}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="draft">Draft</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
+                    {renderJobForm()}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowJobDialog(false)}>Cancel</Button>
-                        <Button onClick={createJobPosting}>Create Job Posting</Button>
+                        <Button onClick={createJobPosting} disabled={loading}>
+                            {loading ? 'Creating...' : 'Create Job Posting'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Interview Scheduling Dialog */}
             <Dialog open={showInterviewDialog} onOpenChange={setShowInterviewDialog}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
@@ -1140,7 +1223,6 @@ const RecruitmentOnboarding = () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Candidate Detail Dialog */}
             {selectedCandidate && (
                 <Dialog open={showCandidateDialog} onOpenChange={setShowCandidateDialog}>
                     <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -1279,7 +1361,6 @@ const RecruitmentOnboarding = () => {
                 </Dialog>
             )}
 
-            {/* Job Detail Dialog */}
             {selectedJob && (
                 <Dialog open={showJobDetailDialog} onOpenChange={setShowJobDetailDialog}>
                     <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -1328,7 +1409,7 @@ const RecruitmentOnboarding = () => {
                             <div>
                                 <Label>Requirements</Label>
                                 <ul className="mt-2 space-y-1">
-                                    {selectedJob.requirements.map((req, index) => (
+                                    {selectedJob.requirements.map((req: any, index: any) => (
                                         <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
                                             <CheckCircle className="w-4 h-4 mt-0.5 text-green-600" />
                                             {req}
@@ -1363,5 +1444,6 @@ const RecruitmentOnboarding = () => {
             )}
         </div>
     );
-}
-export default RecruitmentOnboarding
+};
+
+export default RecruitmentOnboarding;

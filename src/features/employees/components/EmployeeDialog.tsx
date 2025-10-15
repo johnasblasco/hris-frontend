@@ -49,25 +49,34 @@ const EmployeeDialog = ({
         const formData = new FormData(event.target as HTMLFormElement);
 
         try {
-            const newEmployee = {
-                first_name: formData.get('firstName') as string,
-                last_name: formData.get('lastName') as string,
-                email: formData.get('email') as string,
-                phone: formData.get('phone') as string,
-                department_id: formData.get('department') ? Number(formData.get('department')) : null,
-                position_id: formData.get('position') ? Number(formData.get('position')) : null,
-                base_salary: Number(formData.get('salary')),
-                hire_date: formData.get('hireDate') as string,
-                manager_id: formData.get('manager') ? Number(formData.get('manager')) : null,
-                password: formData.get('password') as string,
-            };
+            // ✅ Create FormData object for file upload support
+            const submitData = new FormData();
+            submitData.append('first_name', formData.get('firstName') as string);
+            submitData.append('last_name', formData.get('lastName') as string);
+            submitData.append('email', formData.get('email') as string);
+            submitData.append('phone', formData.get('phone') as string || '');
+            submitData.append('department_id', formData.get('department') as string || '');
+            submitData.append('position_id', formData.get('position') as string || '');
+            submitData.append('base_salary', formData.get('salary') as string);
+            submitData.append('hire_date', formData.get('hireDate') as string);
+            submitData.append('manager_id', formData.get('manager') as string || '');
+            submitData.append('password', formData.get('password') as string);
 
-            const response = await api.post('/create/employees', newEmployee);
+            // ✅ Add file upload if provided
+            const fileInput = (event.target as HTMLFormElement).elements.namedItem('201_file') as HTMLInputElement;
+            if (fileInput?.files?.[0]) {
+                submitData.append('201_file', fileInput.files[0]);
+            }
+
+            const response = await api.post('/create/employees', submitData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
 
             if (response.data.isSuccess) {
                 onEmployeeAdded();
                 setIsAddDialogOpen(false);
-                // Reset form
                 (event.target as HTMLFormElement).reset();
             } else {
                 throw new Error(response.data.message);
@@ -157,7 +166,7 @@ const EmployeeDialog = ({
                         Add Employee
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl w-full">
+                <DialogContent className="md:min-w-5xl w-full"> {/* ✅ Increased width */}
                     <DialogHeader>
                         <DialogTitle>Add New Employee</DialogTitle>
                         <DialogDescription>
@@ -171,7 +180,8 @@ const EmployeeDialog = ({
                         </div>
                     )}
 
-                    <form onSubmit={handleAddEmployee} className="grid grid-cols-2 gap-6">
+                    <form onSubmit={handleAddEmployee} className="grid grid-cols-3 gap-6"> {/* ✅ 3 columns for wider layout */}
+                        {/* Column 1 - Personal Info */}
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="firstName">First Name</Label>
@@ -189,12 +199,9 @@ const EmployeeDialog = ({
                                 <Label htmlFor="phone">Phone</Label>
                                 <Input name="phone" placeholder="+1-555-0101" />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="password">Password</Label>
-                                <Input name="password" type="password" placeholder="Enter password" required />
-                            </div>
                         </div>
 
+                        {/* Column 2 - Job Details */}
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="department">Department</Label>
@@ -205,7 +212,7 @@ const EmployeeDialog = ({
                                     <SelectContent>
                                         {departments.map(dept => (
                                             <SelectItem key={dept.id} value={dept.id.toString()}>
-                                                {dept.name}
+                                                {dept.department_name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -220,7 +227,7 @@ const EmployeeDialog = ({
                                     <SelectContent>
                                         {positions.map(pos => (
                                             <SelectItem key={pos.id} value={pos.id.toString()}>
-                                                {pos.title}
+                                                {pos.position_name} {/* ✅ Fixed: should be position_name */}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -237,6 +244,10 @@ const EmployeeDialog = ({
                                 <Label htmlFor="hireDate">Hire Date</Label>
                                 <Input name="hireDate" type="date" required />
                             </div>
+                        </div>
+
+                        {/* Column 3 - Security & File Upload */}
+                        <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="manager">Manager</Label>
                                 <Select name="manager">
@@ -246,24 +257,41 @@ const EmployeeDialog = ({
                                     <SelectContent>
                                         {managers.map(manager => (
                                             <SelectItem key={manager.id} value={manager.id.toString()}>
-                                                {manager.first_name} {manager.last_name}
+                                                {manager.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <Button type="submit" className="w-full" disabled={loading}>
+                            <div className="space-y-2">
+                                <Label htmlFor="password">Password</Label>
+                                <Input name="password" type="password" placeholder="Enter password" required />
+                            </div>
+
+                            {/* File Upload - Full width in this column */}
+                            <div className="space-y-2">
+                                <Label htmlFor="201_file">201 File</Label>
+                                <Input
+                                    name="201_file"
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,.jpg,.png"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Upload employee 201 file (PDF, DOC, DOCX, JPG, PNG - max 2MB)
+                                </p>
+                            </div>
+
+                            <Button type="submit" className="w-full mt-4" disabled={loading}>
                                 {loading ? 'Adding...' : 'Add Employee'}
                             </Button>
                         </div>
                     </form>
                 </DialogContent>
-
             </Dialog>
 
             {/* Edit Employee Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogOpenChange}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="md:min-w-5xl w-full"> {/* ✅ Wider than before */}
                     <DialogHeader>
                         <DialogTitle>Edit Employee</DialogTitle>
                         <DialogDescription>
@@ -276,80 +304,102 @@ const EmployeeDialog = ({
                         </div>
                     )}
                     {editingEmployee && (
-                        <form onSubmit={handleEditEmployee} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="firstName">First Name</Label>
-                                    <Input name="firstName" defaultValue={editingEmployee.first_name} required />
+                        <form onSubmit={handleEditEmployee} className="grid grid-cols-2 gap-6"> {/* ✅ 2 columns for edit */}
+                            {/* Left Column */}
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="firstName">First Name</Label>
+                                        <Input name="firstName" defaultValue={editingEmployee.first_name} required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lastName">Last Name</Label>
+                                        <Input name="lastName" defaultValue={editingEmployee.last_name} required />
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="lastName">Last Name</Label>
-                                    <Input name="lastName" defaultValue={editingEmployee.last_name} required />
+                                    <Label htmlFor="email">Email</Label>
+                                    <Input name="email" type="email" defaultValue={editingEmployee.email} required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Phone</Label>
+                                    <Input name="phone" defaultValue={editingEmployee.phone || ''} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="salary">Base Salary (Annual)</Label>
+                                    <Input name="salary" type="number" defaultValue={editingEmployee.base_salary} required />
+                                    <p className="text-xs text-muted-foreground">System auto-calculates deductions, taxes & net pay in Payroll</p>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input name="email" type="email" defaultValue={editingEmployee.email} required />
+
+                            {/* Right Column */}
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="department">Department</Label>
+                                    <Select name="department" defaultValue={editingEmployee.department_id?.toString()} required>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select department" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {departments.map(dept => (
+                                                <SelectItem key={dept.id} value={dept.id.toString()}>
+                                                    {dept.department_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="position">Position</Label>
+                                    <Select name="position" defaultValue={editingEmployee.position_id?.toString()} required>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select position" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {positions.map(pos => (
+                                                <SelectItem key={pos.id} value={pos.id.toString()}>
+                                                    {pos.position_name} {/* ✅ Fixed: should be position_name */}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="hireDate">Hire Date</Label>
+                                    <Input name="hireDate" type="date" defaultValue={editingEmployee.hire_date} required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="manager">Manager</Label>
+                                    <Select name="manager" defaultValue={editingEmployee.manager_id?.toString()}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select manager" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {managers.map(manager => (
+                                                <SelectItem key={manager.id} value={manager.id.toString()}>
+                                                    {manager.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* File Upload */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="201_file">201 File</Label>
+                                    <Input
+                                        name="201_file"
+                                        type="file"
+                                        accept=".pdf,.doc,.docx,.jpg,.png"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Upload new 201 file (optional)
+                                    </p>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="phone">Phone</Label>
-                                <Input name="phone" defaultValue={editingEmployee.phone || ''} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="department">Department</Label>
-                                <Select name="department" defaultValue={editingEmployee.department_id?.toString()} required>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select department" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {departments.map(dept => (
-                                            <SelectItem key={dept.id} value={dept.id.toString()}>
-                                                {dept.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="position">Position</Label>
-                                <Select name="position" defaultValue={editingEmployee.position_id?.toString()} required>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select position" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {positions.map(pos => (
-                                            <SelectItem key={pos.id} value={pos.id.toString()}>
-                                                {pos.title}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="salary">Base Salary (Annual)</Label>
-                                <Input name="salary" type="number" defaultValue={editingEmployee.base_salary} required />
-                                <p className="text-xs text-muted-foreground">System auto-calculates deductions, taxes & net pay in Payroll</p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="hireDate">Hire Date</Label>
-                                <Input name="hireDate" type="date" defaultValue={editingEmployee.hire_date} required />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="manager">Manager</Label>
-                                <Select name="manager" defaultValue={editingEmployee.manager_id?.toString()}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select manager" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {managers.map(manager => (
-                                            <SelectItem key={manager.id} value={manager.id.toString()}>
-                                                {manager.first_name} {manager.last_name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex gap-2">
+
+                            {/* Full Width Actions */}
+                            <div className="col-span-2 flex gap-2 pt-4 border-t">
                                 <Button type="submit" className="flex-1" disabled={loading}>
                                     {loading ? 'Updating...' : 'Update Employee'}
                                 </Button>

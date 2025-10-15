@@ -1,4 +1,12 @@
-import { Building2, Users, Briefcase, Calendar, Gift, MapPin, Award, GraduationCap } from 'lucide-react';
+import {
+    Building2,
+    Users,
+    Briefcase,
+    Calendar,
+    Gift,
+    MapPin,
+    Clock
+} from 'lucide-react';
 
 export const setupSteps = [
     { id: 'company', label: 'Company Info', icon: Building2 },
@@ -8,16 +16,27 @@ export const setupSteps = [
     { id: 'benefits', label: 'Benefits', icon: Gift },
     { id: 'employment', label: 'Employment Types', icon: Users },
     { id: 'locations', label: 'Work Locations', icon: MapPin },
-    { id: 'skills', label: 'Skills', icon: GraduationCap },
-    { id: 'performance', label: 'Performance Ratings', icon: Award },
+    { id: 'holidays', label: 'Holidays', icon: Calendar },
+    { id: 'shifts', label: 'Work Shifts', icon: Clock },
 ];
 
 export const defaultSetupData = {
     companyName: 'Acme Corporation',
+    companyMission: 'To empower businesses with innovative technology solutions that drive growth and success.',
+    companyVision: 'To be the leading provider of enterprise solutions, transforming how organizations operate and grow in the digital age.',
+    registrationNumber: 'REG-2024-12345',
+    taxId: '12-3456789',
+    foundedYear: '2010',
     industry: 'Technology',
     companySize: '100-500',
-    timezone: 'America/New_York',
-    currency: 'USD',
+    website: 'www.acmecorp.com',
+    primaryEmail: 'info@acmecorp.com',
+    phoneNumber: '+1 (555) 123-4567',
+    address: '123 Business Street',
+    city: 'San Francisco',
+    state: 'California',
+    postalCode: '94102',
+    country: 'United States',
     departments: [
         { id: '1', name: 'Engineering', description: 'Software development and technical operations' },
         { id: '2', name: 'Marketing', description: 'Brand management and customer engagement' },
@@ -58,18 +77,17 @@ export const defaultSetupData = {
         { id: '2', name: 'West Coast Office', address: '456 Tech Ave, San Francisco, CA', isRemote: false },
         { id: '3', name: 'Remote', address: 'Various Locations', isRemote: true },
     ],
-    skills: [
-        { id: '1', name: 'JavaScript', category: 'Technical' },
-        { id: '2', name: 'React', category: 'Technical' },
-        { id: '3', name: 'Project Management', category: 'Management' },
-        { id: '4', name: 'Communication', category: 'Soft Skills' },
-        { id: '5', name: 'Leadership', category: 'Soft Skills' },
+    holidays: [
+        { id: '1', name: 'New Year\'s Day', date: '2025-01-01', type: 'Public' },
+        { id: '2', name: 'Independence Day', date: '2025-07-04', type: 'Public' },
+        { id: '3', name: 'Thanksgiving', date: '2025-11-27', type: 'Public' },
+        { id: '4', name: 'Christmas', date: '2025-12-25', type: 'Public' },
+        { id: '5', name: 'Company Anniversary', date: '2025-03-15', type: 'Company' },
     ],
-    performanceRatings: [
-        { id: '1', label: 'Exceptional', value: 5, description: 'Exceeds all expectations' },
-        { id: '2', label: 'Exceeds Expectations', value: 4, description: 'Consistently exceeds goals' },
-        { id: '3', label: 'Meets Expectations', value: 3, description: 'Meets all job requirements' },
-        { id: '4', label: 'Needs Improvement', value: 2, description: 'Performance below expectations' },
-        { id: '5', label: 'Unsatisfactory', value: 1, description: 'Significant performance issues' },
+    workShifts: [
+        { id: '1', name: 'Morning Shift', startTime: '06:00', endTime: '14:00', description: 'Early morning operations' },
+        { id: '2', name: 'Day Shift', startTime: '09:00', endTime: '17:00', description: 'Standard business hours' },
+        { id: '3', name: 'Evening Shift', startTime: '14:00', endTime: '22:00', description: 'Afternoon and evening coverage' },
+        { id: '4', name: 'Night Shift', startTime: '22:00', endTime: '06:00', description: 'Overnight operations' },
     ],
 };
