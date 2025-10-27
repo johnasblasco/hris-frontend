@@ -1,20 +1,3 @@
-interface TransformedJobPosting {
-    id: string;
-    title: string;
-    department: string;
-    location: string;
-    type: string | null;
-    salary: string;
-    status: string;
-    applications: number;
-    posted: string;
-    deadline: string;
-    description: string;
-    requirements: string[];
-    responsibilities: string;
-}
-
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +20,6 @@ import {
     Clock,
     Users,
     Plus,
-    Search,
     Filter,
     Eye,
     MessageSquare,
@@ -47,28 +29,28 @@ import {
     CheckCircle,
     XCircle,
     AlertCircle,
-    User,
     Building2,
     Briefcase,
     ArrowRight,
     Download,
-    Edit,
     Trash2,
     Send,
-    Link as LinkIcon
+    Link as LinkIcon,
+    RefreshCw
 } from 'lucide-react';
 import { toast } from "sonner";
 import { mockCandidates, mockInterviews, mockHiredEmployees, mockDepartments, mockEmployees } from '../data/mockData';
-import type { JobPosting, Candidate, Interview, HiredEmployee } from '../data/types';
-import { jobPostingAPI } from './services/api';
+import { applicantAPI, jobPostingAPI, interviewAPI } from './services/api'; // Added interviewAPI import
+import type { BackendApplicant, JobStatus, NewJobData, Applicant, TransformedJobPosting, HiredEmployee, Interview, Candidate, JobPosting } from './recruitmentTypes';
 
+// Added missing recruitmentStages array
 const recruitmentStages = [
     { id: 'new', label: 'New Applications', color: 'bg-blue-100 text-blue-800', icon: FileText },
-    { id: 'screening', label: 'Screening', color: 'bg-purple-100 text-purple-800', icon: Search },
+    { id: 'screening', label: 'Screening', color: 'bg-purple-100 text-purple-800', icon: Filter },
     { id: 'phone-screening', label: 'Phone Screening', color: 'bg-indigo-100 text-indigo-800', icon: Phone },
     { id: 'assessment', label: 'Assessment', color: 'bg-yellow-100 text-yellow-800', icon: FileText },
     { id: 'technical-interview', label: 'Technical Interview', color: 'bg-orange-100 text-orange-800', icon: Users },
-    { id: 'final-interview', label: 'Final Interview', color: 'bg-pink-100 text-pink-800', icon: User },
+    { id: 'final-interview', label: 'Final Interview', color: 'bg-pink-100 text-pink-800', icon: Users },
     { id: 'offer', label: 'Offer Extended', color: 'bg-green-100 text-green-800', icon: CheckCircle },
     { id: 'rejected', label: 'Rejected', color: 'bg-red-100 text-red-800', icon: XCircle },
 ];
@@ -80,8 +62,34 @@ const recruitmentMetrics = [
     { label: 'Avg Time to Hire', value: '18 days', change: '-2', icon: Clock },
 ];
 
+// Stage mapping between frontend and backend
+const stageMapping = {
+    'new': 'new_application',
+    'screening': 'screening',
+    'phone-screening': 'phone_screening',
+    'assessment': 'assessment',
+    'technical-interview': 'technical_interview',
+    'final-interview': 'final_interview',
+    'offer': 'offer_extended',
+    'hired': 'hired'
+} as const;
+
+const reverseStageMapping = {
+    'new_application': 'new',
+    'screening': 'screening',
+    'phone_screening': 'phone-screening',
+    'assessment': 'assessment',
+    'technical_interview': 'technical-interview',
+    'final_interview': 'final-interview',
+    'offer_extended': 'offer',
+    'hired': 'hired'
+} as const;
+
 const RecruitmentOnboarding = () => {
+    const [applicants, setApplicants] = useState<Applicant[]>([]);
+    const [hiredApplicants, setHiredApplicants] = useState<Applicant[]>([]);
     const [activeTab, setActiveTab] = useState('pipeline');
+    const [pipelineView, setPipelineView] = useState<'pipeline' | 'table'>('pipeline');
     const [showJobDialog, setShowJobDialog] = useState(false);
     const [showInterviewDialog, setShowInterviewDialog] = useState(false);
     const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
@@ -91,18 +99,36 @@ const RecruitmentOnboarding = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStage, setFilterStage] = useState<string>('all');
     const [loading, setLoading] = useState(false);
-
     const [jobs, setJobs] = useState<TransformedJobPosting[]>([]);
-
-
     const [candidates, setCandidates] = useState<Candidate[]>(mockCandidates);
     const [interviews, setInterviews] = useState<Interview[]>(mockInterviews);
     const [hiredEmployees, setHiredEmployees] = useState<HiredEmployee[]>(mockHiredEmployees);
     const [departments, setDepartments] = useState(mockDepartments);
 
-    const [newJob, setNewJob] = useState({
+
+    const fetchInterviews = async () => {
+        setLoading(true);
+        try {
+            const response = await interviewAPI.getAll();
+            if (response.data.isSuccess) {
+                const transformedInterviews = response.data.data.map(transformInterview);
+                setInterviews(transformedInterviews);
+            }
+        } catch (error) {
+            console.error('Error fetching interviews:', error);
+            toast.error('Failed to fetch interviews');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+
+    const [newJob, setNewJob] = useState<NewJobData>({
         title: '',
         department_id: '',
+        work_type: 'On-site',
+        employment_type: 'Full-time',
         location: '',
         salary_range: '',
         status: 'draft',
@@ -125,11 +151,394 @@ const RecruitmentOnboarding = () => {
         meetingLink: '',
     });
 
+
+    // Add transformInterview function
+    const transformInterview = (backendInterview: any): Interview => {
+        if (!backendInterview) {
+            console.warn('Received undefined backendInterview');
+            return createDefaultInterview();
+        }
+
+        try {
+            // Parse the scheduled_at datetime into separate date and time
+            const scheduledAt = backendInterview.scheduled_at;
+            let date = '';
+            let time = '';
+
+            if (scheduledAt) {
+                const datetime = new Date(scheduledAt);
+                date = datetime.toISOString().split('T')[0];
+                time = datetime.toTimeString().split(' ')[0].substring(0, 5); // Get HH:MM format
+            }
+
+            return {
+                id: backendInterview.id?.toString() || 'unknown',
+                candidateId: backendInterview.applicant_id?.toString() || '',
+                candidateName: backendInterview.applicant ?
+                    `${backendInterview.applicant.first_name} ${backendInterview.applicant.last_name}` :
+                    'Unknown Candidate',
+                position: backendInterview.position ||
+                    backendInterview.applicant?.job_posting?.title ||
+                    'Not specified',
+                interviewer: backendInterview.interviewer ?
+                    `${backendInterview.interviewer.first_name} ${backendInterview.interviewer.last_name}` :
+                    'Unknown Interviewer',
+                date: date,
+                time: time,
+                type: backendInterview.mode === 'in-person' ? 'In-Person' :
+                    backendInterview.mode === 'virtual' ? 'Virtual' :
+                        backendInterview.stage || 'Phone Screening',
+                status: backendInterview.status || 'scheduled',
+                notes: backendInterview.notes || '',
+                location: backendInterview.mode === 'in-person' ? backendInterview.location_link : '',
+                meetingLink: backendInterview.mode === 'virtual' ? backendInterview.location_link : '',
+                created_at: backendInterview.created_at || new Date().toISOString(),
+                updated_at: backendInterview.updated_at || new Date().toISOString()
+            };
+        } catch (error) {
+            console.error('Error transforming interview:', error, backendInterview);
+            return createDefaultInterview();
+        }
+    };
+
+    const createDefaultInterview = (): Interview => ({
+        id: 'default',
+        candidateId: '',
+        candidateName: 'Unknown Candidate',
+        position: 'Not specified',
+        interviewer: '',
+        date: '',
+        time: '',
+        type: 'Phone Screening',
+        status: 'scheduled',
+        notes: '',
+        location: '',
+        meetingLink: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    });
+
+
+    // Add function to update interview status
+    const updateInterviewStatus = async (interviewId: string, status: string, additionalData: any = {}) => {
+        try {
+            const response = await interviewAPI.update(interviewId, {
+                status,
+                ...additionalData
+            });
+
+            if (response.data.isSuccess) {
+                toast.success(`Interview ${status} successfully`);
+                fetchInterviews(); // Refresh the list
+            }
+        } catch (error: any) {
+            console.error('Error updating interview:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to update interview';
+            toast.error(errorMessage);
+        }
+    };
+
+    // Add function to submit feedback
+    const submitInterviewFeedback = async (interviewId: string, feedback: string) => {
+        try {
+            const response = await interviewAPI.submitFeedback(interviewId, { feedback });
+
+            if (response.data.isSuccess) {
+                toast.success('Feedback submitted successfully');
+                fetchInterviews();
+            }
+        } catch (error: any) {
+            console.error('Error submitting feedback:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to submit feedback';
+            toast.error(errorMessage);
+        }
+    };
+
+    // Update useEffect to fetch interviews when the interviews tab is active
+    useEffect(() => {
+        if (activeTab === 'interviews') {
+            fetchInterviews();
+        }
+        if (activeTab === 'pipeline' || activeTab === 'candidates') {
+            fetchApplicants();
+        }
+        if (activeTab === 'hired') {
+            fetchHiredApplicants();
+        }
+    }, [activeTab]);
+
+
+
+
+
+
+
+
+
+    // Fixed transformApplicant function with proper typing
+    const transformApplicant = (backendApplicant: any): Applicant => {
+        // Add comprehensive safety checks
+        if (!backendApplicant) {
+            console.warn('Received undefined backendApplicant');
+            return createDefaultApplicant();
+        }
+
+        // Debug the incoming data
+        console.log('Transforming applicant:', backendApplicant);
+
+        try {
+            return {
+                id: backendApplicant.id?.toString() || 'unknown',
+                name: backendApplicant.first_name + " " + backendApplicant.last_name || 'Unknown Candidate',
+                email: backendApplicant.email || '',
+                phone: backendApplicant.phone || '',
+                experience: backendApplicant.experience || '',
+                stage: getSafeStage(backendApplicant.stage),
+                position: backendApplicant.job_posting?.title || backendApplicant.position || 'Not specified',
+                source: backendApplicant.source || '',
+                appliedDate: getSafeDate(backendApplicant.applied_date, backendApplicant.created_at),
+                rating: backendApplicant.rating || 0,
+                notes: backendApplicant.notes || '',
+                resume: backendApplicant.resume || '',
+                skills: getSafeSkills(backendApplicant.skills),
+                is_archived: backendApplicant.is_archived || false,
+                job_posting: backendApplicant.job_posting ? {
+                    id: backendApplicant.job_posting.id?.toString() || 'unknown',
+                    title: backendApplicant.job_posting.title || '',
+                    department: backendApplicant.job_posting.department?.department_name || 'Unknown',
+                    location: backendApplicant.job_posting.location || ''
+                } : undefined,
+                created_at: backendApplicant.created_at || new Date().toISOString(),
+                updated_at: backendApplicant.updated_at || new Date().toISOString()
+            };
+        } catch (error) {
+            console.error('Error transforming applicant:', error, backendApplicant);
+            return createDefaultApplicant();
+        }
+    };
+
+    // Helper functions for safe data transformation
+    const createDefaultApplicant = (): Applicant => ({
+        id: 'default',
+        name: 'Unknown Candidate',
+        email: '',
+        phone: '',
+        experience: '',
+        stage: 'new',
+        position: 'Not specified',
+        source: '',
+        appliedDate: new Date().toISOString().split('T')[0],
+        rating: 0,
+        notes: '',
+        resume: '',
+        skills: [],
+        is_archived: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    });
+
+    const getSafeStage = (stage: any): string => {
+        if (!stage) return 'new';
+
+        const safeStage = reverseStageMapping[stage as keyof typeof reverseStageMapping];
+        return safeStage || stage || 'new';
+    };
+
+    const getSafeDate = (appliedDate: any, createdDate: any): string => {
+        const date = appliedDate || createdDate;
+        if (!date) return new Date().toISOString().split('T')[0];
+
+        try {
+            return date.split('T')[0];
+        } catch {
+            return new Date().toISOString().split('T')[0];
+        }
+    };
+
+    const getSafeSkills = (skills: any): string[] => {
+        if (Array.isArray(skills)) return skills;
+        if (typeof skills === 'string') {
+            try {
+                return JSON.parse(skills);
+            } catch {
+                return [];
+            }
+        }
+        return [];
+    };
+
+    const fetchApplicants = async () => {
+        setLoading(true);
+        try {
+            const response = await applicantAPI.getAll();
+            console.log('API Response:', response); // Debug the actual response
+
+            if (response.data.isSuccess) {
+                console.log('API Data:', response.data.data); // Debug the data structure
+
+                // Add safety check for the data structure
+                if (!response.data.data || !Array.isArray(response.data.data)) {
+                    console.error('Invalid data structure:', response.data.data);
+                    toast.error('Invalid data received from server');
+                    return;
+                }
+
+                const transformedApplicants = response.data.data.map(transformApplicant);
+                console.log('Transformed Applicants:', transformedApplicants); // Debug transformed data
+
+                setApplicants(transformedApplicants);
+                setCandidates(transformedApplicants);
+            }
+        } catch (error) {
+            console.error('Error fetching applicants:', error);
+            toast.error('Failed to fetch applicants');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchHiredApplicants = async () => {
+        try {
+            const response = await applicantAPI.getHired();
+            if (response.data.isSuccess) {
+                const transformedHired = response.data.data.map(transformApplicant);
+                setHiredApplicants(transformedHired);
+                setHiredEmployees(transformedHired.map((applicant: any) => ({
+                    id: applicant.id,
+                    name: applicant.name,
+                    email: applicant.email,
+                    phone: applicant.phone,
+                    position: applicant.position,
+                    department: applicant.job_posting?.department || 'Unknown',
+                    description: applicant.job_posting?.description || 'N/A',
+                    startDate: applicant.appliedDate,
+                    salary: 'To be determined',
+                    source: applicant.source,
+                    skills: applicant.skills
+                })));
+            }
+        } catch (error) {
+            console.error('Error fetching hired applicants:', error);
+            toast.error('Failed to fetch hired applicants');
+        }
+    };
+
+    // Move applicant to different stage
+    const moveCandidateToStage = async (candidateId: string, newStage: string) => {
+        try {
+            const backendStage = stageMapping[newStage as keyof typeof stageMapping];
+
+            const response = await applicantAPI.moveStage(candidateId, backendStage);
+
+            if (response.data.isSuccess) {
+                setApplicants(prev => prev.map(app =>
+                    app.id === candidateId ? { ...app, stage: newStage } : app
+                ));
+                setCandidates(prev => prev.map(c =>
+                    c.id === candidateId ? { ...c, stage: newStage } : c
+                ));
+
+                toast.success(`Candidate moved to ${getStageLabel(newStage)}`);
+
+                if (newStage === 'hired') {
+                    fetchHiredApplicants(); // Refresh hired list
+                    toast.success('Candidate hired successfully!');
+                }
+            }
+        } catch (error: any) {
+            console.error('Error moving applicant stage:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to move applicant stage';
+            toast.error(errorMessage);
+        }
+    };
+
+    // Hire applicant - Fixed to use the correct API
+    const hireApplicant = async (candidateId: string) => {
+        try {
+            const response = await applicantAPI.hire(candidateId);
+
+            if (response.data.isSuccess) {
+                // Update the stage to 'hired'
+                setApplicants(prev => prev.map(app =>
+                    app.id === candidateId ? { ...app, stage: 'hired' } : app
+                ));
+                setCandidates(prev => prev.map(c =>
+                    c.id === candidateId ? { ...c, stage: 'hired' } : c
+                ));
+                fetchHiredApplicants(); // Refresh hired list
+                toast.success('Candidate hired successfully!');
+            }
+        } catch (error: any) {
+            console.error('Error hiring applicant:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to hire applicant';
+            toast.error(errorMessage);
+        }
+    };
+
+    // Fetch applicant by ID for details
+    const fetchApplicantById = async (id: string) => {
+        try {
+            const response = await applicantAPI.getById(id);
+            if (response.data.isSuccess) {
+                return transformApplicant(response.data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching applicant details:', error);
+            toast.error('Failed to fetch applicant details');
+        }
+        return null;
+    };
+
+    // Update useEffect to fetch data
+    useEffect(() => {
+        if (activeTab === 'pipeline' || activeTab === 'candidates') {
+            fetchApplicants();
+        }
+        if (activeTab === 'hired') {
+            fetchHiredApplicants();
+        }
+    }, [activeTab]);
+
+    // Update the openCandidateDetail function
+    const openCandidateDetail = async (candidate: Candidate) => {
+        setSelectedCandidate(candidate);
+
+        // Fetch fresh data for the candidate
+        const freshData = await fetchApplicantById(candidate.id);
+        if (freshData) {
+            setSelectedCandidate(freshData);
+        }
+
+        setShowCandidateDialog(true);
+    };
+
+    // Update the getCandidatesByStage function to use applicants
+    const getCandidatesByStage = (stageId: string) => {
+        return applicants.filter(app => app.stage === stageId && !app.is_archived);
+    };
+
+    const filteredCandidates = applicants.filter(applicant => {
+        const name = applicant.name?.toLowerCase() || '';
+        const position = applicant.position?.toLowerCase() || '';
+        const email = applicant.email?.toLowerCase() || '';
+        const search = searchTerm.toLowerCase();
+
+        const matchesSearch =
+            name.includes(search) ||
+            position.includes(search) ||
+            email.includes(search);
+
+        const matchesStage = filterStage === 'all' || applicant.stage === filterStage;
+
+        return matchesSearch && matchesStage && !applicant.is_archived;
+    });
+
     const fetchJobPostings = async () => {
         setLoading(true);
         try {
             const response = await jobPostingAPI.getAll({
                 search: searchTerm,
+                per_page: 50 // Adjust as needed
             });
 
             if (response.data.isSuccess) {
@@ -138,18 +547,18 @@ const RecruitmentOnboarding = () => {
                     title: job.title,
                     department: job.department?.department_name || 'Unknown',
                     location: job.location,
-                    type: 'Full-time',
+                    type: job.employment_type || 'Full-time',
                     salary: job.salary_range,
                     status: job.status,
-                    applications: 0,
+                    applications: 0, // You might want to add this to your backend
                     posted: job.posted_date,
                     deadline: job.deadline_date,
-                    description: job.description,
-                    requirements: [],
-                    responsibilities: '',
+                    description: job.job_posting?.description,
+                    requirements: [], // You might want to add this to your backend
+                    responsibilities: job.description, // Using description as fallback
                 }));
 
-                setJobs((prev: TransformedJobPosting[]) => [...prev, ...transformedJobs]);
+                setJobs(transformedJobs);
             }
         } catch (error) {
             console.error('Error fetching job postings:', error);
@@ -158,6 +567,7 @@ const RecruitmentOnboarding = () => {
             setLoading(false);
         }
     };
+
 
     useEffect(() => {
         if (activeTab === 'jobs' || activeTab === 'overview') {
@@ -184,28 +594,6 @@ const RecruitmentOnboarding = () => {
         }
     };
 
-    const filteredCandidates = candidates.filter(candidate => {
-        const matchesSearch = candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            candidate.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            candidate.email.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStage = filterStage === 'all' || candidate.stage === filterStage;
-        return matchesSearch && matchesStage;
-    });
-
-    const getCandidatesByStage = (stageId: string) => {
-        return candidates.filter(c => c.stage === stageId);
-    };
-
-    const moveCandidateToStage = (candidateId: string, newStage: string) => {
-        setCandidates(prev => prev.map(c =>
-            c.id === candidateId ? { ...c, stage: newStage } : c
-        ));
-        toast.success(`Candidate moved to ${getStageLabel(newStage)}`);
-
-        if (newStage === 'offer') {
-            toast.success('Candidate ready for offer letter!');
-        }
-    };
 
     const createJobPosting = async () => {
         if (!newJob.title || !newJob.department_id || !newJob.location) {
@@ -214,7 +602,13 @@ const RecruitmentOnboarding = () => {
         }
 
         try {
-            const response = await jobPostingAPI.create(newJob);
+            // Convert the data to match API expectations
+            const apiData = {
+                ...newJob,
+                status: newJob.status as JobStatus // This ensures type safety
+            };
+
+            const response = await jobPostingAPI.create(apiData);
 
             if (response.data.isSuccess) {
                 const createdJob = response.data.data;
@@ -223,7 +617,7 @@ const RecruitmentOnboarding = () => {
                     title: createdJob.title,
                     department: departments.find(d => d.id.toString() === createdJob.department_id)?.name || 'Unknown',
                     location: createdJob.location,
-                    type: 'Full-time',
+                    type: createdJob.employment_type,
                     salary: createdJob.salary_range,
                     status: createdJob.status,
                     applications: 0,
@@ -231,15 +625,17 @@ const RecruitmentOnboarding = () => {
                     deadline: createdJob.deadline_date,
                     description: createdJob.description,
                     requirements: [],
-                    responsibilities: '',
+                    responsibilities: createdJob.description,
                 };
 
-                setJobs((prev: TransformedJobPosting[]) => [...prev, transformedJob]);
+                setJobs(prev => [...prev, transformedJob]);
                 toast.success('Job posting created successfully!');
                 setShowJobDialog(false);
                 setNewJob({
                     title: '',
                     department_id: '',
+                    work_type: 'On-site',
+                    employment_type: 'Full-time',
                     location: '',
                     salary_range: '',
                     status: 'draft',
@@ -255,12 +651,13 @@ const RecruitmentOnboarding = () => {
         }
     };
 
+    // Fixed updateJobStatus
     const updateJobStatus = async (jobId: string, status: 'active' | 'draft' | 'closed') => {
         try {
             const response = await jobPostingAPI.update(jobId, { status });
 
             if (response.data.isSuccess) {
-                setJobs((prev: TransformedJobPosting[]) => prev.map(j =>
+                setJobs(prev => prev.map(j =>
                     j.id === jobId ? { ...j, status } : j
                 ));
                 toast.success(`Job ${status === 'closed' ? 'closed' : 'updated'}`);
@@ -277,7 +674,7 @@ const RecruitmentOnboarding = () => {
             const response = await jobPostingAPI.archive(jobId);
 
             if (response.data.isSuccess) {
-                setJobs((prev: TransformedJobPosting[]) => prev.filter(j => j.id !== jobId));
+                setJobs(prev => prev.filter(j => j.id !== jobId));
                 toast.success('Job posting archived successfully');
             }
         } catch (error: any) {
@@ -287,43 +684,53 @@ const RecruitmentOnboarding = () => {
         }
     };
 
-    const scheduleInterview = () => {
+    const scheduleInterview = async () => {
         if (!newInterview.candidateId || !newInterview.date || !newInterview.time || !newInterview.interviewer) {
             toast.error('Please fill in all required fields');
             return;
         }
 
-        const interview: Interview = {
-            id: `${interviews.length + 1}`,
-            candidateId: newInterview.candidateId || '',
-            candidateName: newInterview.candidateName || '',
-            position: newInterview.position || '',
-            interviewer: newInterview.interviewer || '',
-            date: newInterview.date || '',
-            time: newInterview.time || '',
-            type: (newInterview.type as any) || 'Phone Screening',
-            status: 'scheduled',
-            notes: newInterview.notes || '',
-            location: newInterview.location,
-            meetingLink: newInterview.meetingLink,
-        };
+        try {
+            // Combine date and time into scheduled_at format
+            const scheduledAt = `${newInterview.date} ${newInterview.time}:00`;
 
-        setInterviews(prev => [...prev, interview]);
-        toast.success('Interview scheduled successfully!');
-        setShowInterviewDialog(false);
-        setNewInterview({
-            candidateId: '',
-            candidateName: '',
-            position: '',
-            interviewer: '',
-            date: '',
-            time: '',
-            type: 'Phone Screening',
-            status: 'scheduled',
-            notes: '',
-            location: '',
-            meetingLink: '',
-        });
+            const interviewData = {
+                applicant_id: parseInt(newInterview.candidateId),
+                position: newInterview.position,
+                interviewer_id: 10, // You'll need to get this from your employees data
+                mode: newInterview.type === 'Virtual' ? 'virtual' : 'in-person',
+                scheduled_at: scheduledAt,
+                stage: newInterview.type.toLowerCase().replace(' ', '_'), // Convert to backend stage format
+                location_link: newInterview.type === 'Virtual' ? newInterview.meetingLink : newInterview.location,
+                notes: newInterview.notes,
+                status: 'scheduled'
+            };
+
+            const response = await interviewAPI.schedule(newInterview.candidateId, interviewData);
+
+            if (response.data.isSuccess) {
+                toast.success('Interview scheduled successfully!');
+                setShowInterviewDialog(false);
+                setNewInterview({
+                    candidateId: '',
+                    candidateName: '',
+                    position: '',
+                    interviewer: '',
+                    date: '',
+                    time: '',
+                    type: 'Phone Screening',
+                    status: 'scheduled',
+                    notes: '',
+                    location: '',
+                    meetingLink: '',
+                });
+                fetchInterviews(); // Refresh the interviews list
+            }
+        } catch (error: any) {
+            console.error('Error scheduling interview:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to schedule interview';
+            toast.error(errorMessage);
+        }
     };
 
     const sendEmail = (email: string) => {
@@ -334,9 +741,20 @@ const RecruitmentOnboarding = () => {
         toast.info(`Calling ${phone}...`);
     };
 
-    const openCandidateDetail = (candidate: Candidate) => {
-        setSelectedCandidate(candidate);
-        setShowCandidateDialog(true);
+    // Add a safe initials function
+    const getInitials = (name: string | undefined): string => {
+        if (!name || typeof name !== 'string') return '??';
+
+        try {
+            return name
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2);
+        } catch {
+            return '??';
+        }
     };
 
     const renderOverview = () => (
@@ -367,7 +785,7 @@ const RecruitmentOnboarding = () => {
                             <Plus className="w-6 h-6" />
                             Post New Job
                         </Button>
-                        <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={() => setActiveTab('candidates')}>
+                        <Button variant="outline" className="h-20 flex flex-col gap-2" onClick={() => setActiveTab('pipeline')}>
                             <Users className="w-6 h-6" />
                             Review Candidates
                         </Button>
@@ -386,21 +804,29 @@ const RecruitmentOnboarding = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {candidates.filter(c => c.stage === 'new').slice(0, 5).map((candidate) => (
-                                <div key={candidate.id} className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 cursor-pointer" onClick={() => openCandidateDetail(candidate)}>
-                                    <div className="flex items-center space-x-3">
-                                        <Avatar className="h-10 w-10">
-                                            <AvatarFallback>{candidate.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">{candidate.name}</p>
-                                            <p className="text-sm text-muted-foreground">{candidate.position}</p>
+                            {applicants
+                                .filter(app => app.stage === 'new')
+                                .slice(0, 5)
+                                .map((applicant) => (
+                                    <div key={applicant.id} className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 cursor-pointer" onClick={() => openCandidateDetail(applicant)}>
+                                        <div className="flex items-center space-x-3">
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarFallback>
+                                                    {/* Safe name splitting */}
+                                                    {getInitials(applicant.name)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{applicant.name}</p>
+                                                <p className="text-sm text-muted-foreground">{applicant.position}</p>
+                                            </div>
                                         </div>
+                                        <Badge className={getStageColor(applicant.stage)}>
+                                            {getStageLabel(applicant.stage)}
+                                        </Badge>
                                     </div>
-                                    <Badge className={getStageColor(candidate.stage)}>{getStageLabel(candidate.stage)}</Badge>
-                                </div>
-                            ))}
-                            {candidates.filter(c => c.stage === 'new').length === 0 && (
+                                ))}
+                            {applicants.filter(app => app.stage === 'new').length === 0 && (
                                 <p className="text-center text-muted-foreground py-4">No new applications</p>
                             )}
                         </div>
@@ -432,7 +858,7 @@ const RecruitmentOnboarding = () => {
         </div>
     );
 
-    const renderPipeline = () => (
+    const renderPipelineView = () => (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
@@ -446,107 +872,220 @@ const RecruitmentOnboarding = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-64"
                     />
+                    <Button
+                        variant="outline"
+                        onClick={fetchApplicants}
+                        disabled={loading}
+                    >
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </Button>
                 </div>
             </div>
 
-            <ScrollArea className="w-full">
-                <div className="flex gap-4 pb-4">
-                    {recruitmentStages.filter(stage => stage.id !== 'rejected').map((stage) => {
-                        const stageCandidates = getCandidatesByStage(stage.id);
-                        const StageIcon = stage.icon;
+            {/* View Toggle */}
+            <div className="flex justify-center">
+                <Tabs value={pipelineView} onValueChange={(value) => setPipelineView(value as 'pipeline' | 'table')} className="w-full">
+                    <TabsList className="grid w-full max-w-md grid-cols-2 mx-auto">
+                        <TabsTrigger value="pipeline">Pipeline View</TabsTrigger>
+                        <TabsTrigger value="table">Table View</TabsTrigger>
+                    </TabsList>
 
-                        return (
-                            <Card key={stage.id} className="min-w-[320px] flex-shrink-0">
-                                <CardHeader className="pb-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <StageIcon className="w-4 h-4" />
-                                            <CardTitle className="text-sm">{stage.label}</CardTitle>
-                                        </div>
-                                        <Badge variant="secondary">{stageCandidates.length}</Badge>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <ScrollArea className="h-[600px] pr-4">
-                                        <div className="space-y-3">
-                                            {stageCandidates.map((candidate) => (
-                                                <Card key={candidate.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                                                    <CardContent className="p-4">
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-start justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Avatar className="h-8 w-8">
-                                                                        <AvatarFallback>{candidate.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                                                    </Avatar>
-                                                                    <div>
-                                                                        <p className="font-medium text-sm">{candidate.name}</p>
-                                                                        <p className="text-xs text-muted-foreground">{candidate.position}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => openCandidateDetail(candidate)}
-                                                                >
-                                                                    <Eye className="w-4 h-4" />
-                                                                </Button>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                <Mail className="w-3 h-3" />
-                                                                <span className="truncate">{candidate.email}</span>
-                                                            </div>
-
-                                                            <div className="flex items-center justify-between text-xs">
-                                                                <span className="text-muted-foreground">{candidate.experience} exp</span>
-                                                                <div className="flex items-center gap-1">
-                                                                    <span className="font-medium">{candidate.rating}</span>
-                                                                    <span className="text-muted-foreground">/ 5.0</span>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="flex gap-1">
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="flex-1 h-7 text-xs"
-                                                                    onClick={() => {
-                                                                        const currentIndex = recruitmentStages.findIndex(s => s.id === stage.id);
-                                                                        if (currentIndex < recruitmentStages.length - 2) {
-                                                                            moveCandidateToStage(candidate.id, recruitmentStages[currentIndex + 1].id);
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <ArrowRight className="w-3 h-3 mr-1" />
-                                                                    Advance
-                                                                </Button>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="h-7 text-xs"
-                                                                    onClick={() => moveCandidateToStage(candidate.id, 'rejected')}
-                                                                >
-                                                                    <XCircle className="w-3 h-3" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
-
-                                            {stageCandidates.length === 0 && (
-                                                <div className="text-center py-8 text-muted-foreground text-sm">
-                                                    No candidates in this stage
-                                                </div>
-                                            )}
-                                        </div>
-                                    </ScrollArea>
+                    <TabsContent value="pipeline" className="mt-6">
+                        {loading ? (
+                            <Card>
+                                <CardContent className="p-6 text-center">
+                                    <div>Loading applicants...</div>
                                 </CardContent>
                             </Card>
-                        );
-                    })}
-                </div>
-            </ScrollArea>
+                        ) : (
+                            <ScrollArea className="w-full overflow-x-auto">
+                                <div className="flex gap-4 pb-4 flex-nowrap">
+                                    {recruitmentStages.filter(stage => stage.id !== 'rejected').map((stage) => {
+                                        const stageApplicants = getCandidatesByStage(stage.id);
+                                        const StageIcon = stage.icon;
+
+                                        return (
+                                            <Card key={stage.id} className="min-w-[320px] flex-shrink-0">
+                                                <CardHeader className="pb-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <StageIcon className="w-4 h-4" />
+                                                            <CardTitle className="text-sm">{stage.label}</CardTitle>
+                                                        </div>
+                                                        <Badge variant="secondary">{stageApplicants.length}</Badge>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent>
+                                                    <ScrollArea className="h-[600px] pr-4">
+                                                        <div className="space-y-3">
+                                                            {stageApplicants.map((applicant) => (
+                                                                <Card key={applicant.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                                                                    <CardContent className="p-4">
+                                                                        <div className="space-y-3">
+                                                                            <div className="flex items-start justify-between">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <Avatar className="h-8 w-8">
+                                                                                        <AvatarFallback>{applicant.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                                                    </Avatar>
+                                                                                    <div>
+                                                                                        <p className="font-medium text-sm">{applicant.name}</p>
+                                                                                        <p className="text-xs text-muted-foreground">{applicant.position}</p>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="sm"
+                                                                                    onClick={() => openCandidateDetail(applicant)}
+                                                                                >
+                                                                                    <Eye className="w-4 h-4" />
+                                                                                </Button>
+                                                                            </div>
+
+                                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                                <Mail className="w-3 h-3" />
+                                                                                <span className="truncate">{applicant.email}</span>
+                                                                            </div>
+
+                                                                            <div className="flex items-center justify-between text-xs">
+                                                                                <span className="text-muted-foreground">{applicant.experience} exp</span>
+                                                                                <div className="flex items-center gap-1">
+                                                                                    <span className="font-medium">{applicant.rating}</span>
+                                                                                    <span className="text-muted-foreground">/ 5.0</span>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="flex gap-1">
+                                                                                <Button
+                                                                                    variant="outline"
+                                                                                    size="sm"
+                                                                                    className="flex-1 h-7 text-xs"
+                                                                                    onClick={() => {
+                                                                                        const currentIndex = recruitmentStages.findIndex(s => s.id === stage.id);
+                                                                                        if (currentIndex < recruitmentStages.length - 2) {
+                                                                                            moveCandidateToStage(applicant.id, recruitmentStages[currentIndex + 1].id);
+                                                                                        } else if (currentIndex === recruitmentStages.length - 2) {
+                                                                                            hireApplicant(applicant.id);
+                                                                                        }
+                                                                                    }}
+                                                                                    disabled={loading}
+                                                                                >
+                                                                                    <ArrowRight className="w-3 h-3 mr-1" />
+                                                                                    {stage.id === 'offer' ? 'Hire' : 'Advance'}
+                                                                                </Button>
+                                                                                <Button
+                                                                                    variant="outline"
+                                                                                    size="sm"
+                                                                                    className="h-7 text-xs"
+                                                                                    onClick={() => moveCandidateToStage(applicant.id, 'rejected')}
+                                                                                    disabled={loading}
+                                                                                >
+                                                                                    <XCircle className="w-3 h-3" />
+                                                                                </Button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </CardContent>
+                                                                </Card>
+                                                            ))}
+
+                                                            {stageApplicants.length === 0 && (
+                                                                <div className="text-center py-8 text-muted-foreground text-sm">
+                                                                    No candidates in this stage
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </ScrollArea>
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })}
+                                </div>
+                            </ScrollArea>
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="table" className="mt-6">
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <div className="flex gap-2">
+                                    <Select value={filterStage} onValueChange={setFilterStage}>
+                                        <SelectTrigger className="w-48">
+                                            <SelectValue placeholder="Filter by stage" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Stages</SelectItem>
+                                            {recruitmentStages.map(stage => (
+                                                <SelectItem key={stage.id} value={stage.id}>{stage.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <Card>
+                                <CardContent className="p-0">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Candidate</TableHead>
+                                                <TableHead>Position</TableHead>
+                                                <TableHead>Stage</TableHead>
+                                                <TableHead>Source</TableHead>
+                                                <TableHead>Applied</TableHead>
+                                                <TableHead>Rating</TableHead>
+                                                <TableHead>Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredCandidates.filter(c => c.stage !== 'rejected').map((candidate) => (
+                                                <TableRow key={candidate.id}>
+                                                    <TableCell>
+                                                        <div className="flex items-center space-x-3">
+                                                            <Avatar className="h-8 w-8">
+                                                                <AvatarFallback>{candidate.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div>
+                                                                <div className="font-medium">{candidate.name}</div>
+                                                                <div className="text-sm text-muted-foreground">{candidate.email}</div>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>{candidate.position}</TableCell>
+                                                    <TableCell>
+                                                        <Badge className={getStageColor(candidate.stage)}>
+                                                            {getStageLabel(candidate.stage)}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>{candidate.source}</TableCell>
+                                                    <TableCell>{candidate.appliedDate}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center">
+                                                            <span className="mr-2">{candidate.rating}</span>
+                                                            <Progress value={candidate.rating * 20} className="w-16" />
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex gap-2">
+                                                            <Button variant="outline" size="sm" onClick={() => openCandidateDetail(candidate)}>
+                                                                <Eye className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button variant="outline" size="sm" onClick={() => sendEmail(candidate.email)}>
+                                                                <MessageSquare className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button variant="outline" size="sm" onClick={() => callCandidate(candidate.phone)}>
+                                                                <Phone className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
+                </Tabs>
+            </div>
         </div>
     );
 
@@ -649,98 +1188,6 @@ const RecruitmentOnboarding = () => {
         </div>
     );
 
-    const renderCandidates = () => (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-2xl font-bold">Candidates</h2>
-                    <p className="text-muted-foreground">Manage candidate applications</p>
-                </div>
-                <div className="flex gap-2">
-                    <Select value={filterStage} onValueChange={setFilterStage}>
-                        <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Filter by stage" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Stages</SelectItem>
-                            {recruitmentStages.map(stage => (
-                                <SelectItem key={stage.id} value={stage.id}>{stage.label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Input
-                        placeholder="Search candidates..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-64"
-                    />
-                </div>
-            </div>
-
-            <Card>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Candidate</TableHead>
-                                <TableHead>Position</TableHead>
-                                <TableHead>Stage</TableHead>
-                                <TableHead>Source</TableHead>
-                                <TableHead>Applied</TableHead>
-                                <TableHead>Rating</TableHead>
-                                <TableHead>Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredCandidates.filter(c => c.stage !== 'rejected').map((candidate) => (
-                                <TableRow key={candidate.id}>
-                                    <TableCell>
-                                        <div className="flex items-center space-x-3">
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarFallback>{candidate.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <div className="font-medium">{candidate.name}</div>
-                                                <div className="text-sm text-muted-foreground">{candidate.email}</div>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{candidate.position}</TableCell>
-                                    <TableCell>
-                                        <Badge className={getStageColor(candidate.stage)}>
-                                            {getStageLabel(candidate.stage)}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>{candidate.source}</TableCell>
-                                    <TableCell>{candidate.appliedDate}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center">
-                                            <span className="mr-2">{candidate.rating}</span>
-                                            <Progress value={candidate.rating * 20} className="w-16" />
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => openCandidateDetail(candidate)}>
-                                                <Eye className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="outline" size="sm" onClick={() => sendEmail(candidate.email)}>
-                                                <MessageSquare className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="outline" size="sm" onClick={() => callCandidate(candidate.phone)}>
-                                                <Phone className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </div>
-    );
-
     const renderInterviews = () => (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -799,23 +1246,37 @@ const RecruitmentOnboarding = () => {
                                     </TableCell>
                                     <TableCell>
                                         <Badge
-                                            variant={interview.status === 'completed' ? 'default' : 'secondary'}
-                                            className={interview.status === 'completed' ? 'bg-green-500' : ''}
+                                            variant={
+                                                interview.status === 'completed' ? 'default' :
+                                                    interview.status === 'cancelled' ? 'destructive' :
+                                                        interview.status === 'noshow' ? 'destructive' :
+                                                            'secondary'
+                                            }
+                                            className={
+                                                interview.status === 'completed' ? 'bg-green-500' :
+                                                    interview.status === 'cancelled' ? 'bg-red-500' :
+                                                        interview.status === 'noshow' ? 'bg-orange-500' :
+                                                            interview.status === 'scheduled' ? 'bg-blue-500' :
+                                                                ''
+                                            }
                                         >
-                                            {interview.status}
+                                            {interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
                                             {interview.status === 'scheduled' && (
-                                                <Button variant="outline" size="sm" onClick={() => {
-                                                    setInterviews(prev => prev.map(i =>
-                                                        i.id === interview.id ? { ...i, status: 'completed' } : i
-                                                    ));
-                                                    toast.success('Interview marked as completed');
-                                                }}>
-                                                    Complete
-                                                </Button>
+                                                <>
+                                                    <Button variant="outline" size="sm" onClick={() => updateInterviewStatus(interview.id, 'completed')}>
+                                                        Complete
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" onClick={() => updateInterviewStatus(interview.id, 'cancelled')}>
+                                                        Cancel
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" onClick={() => updateInterviewStatus(interview.id, 'noshow')}>
+                                                        No Show
+                                                    </Button>
+                                                </>
                                             )}
                                             <Button variant="outline" size="sm" onClick={() => sendEmail(candidates.find(c => c.id === interview.candidateId)?.email || '')}>
                                                 <Mail className="w-4 h-4" />
@@ -874,6 +1335,10 @@ const RecruitmentOnboarding = () => {
                                                 <p className="font-medium">{hire.department}</p>
                                             </div>
                                             <div>
+                                                <span className="text-muted-foreground">Description</span>
+                                                <p className="font-medium">{hire.description}</p>
+                                            </div>
+                                            <div>
                                                 <span className="text-muted-foreground">Start Date</span>
                                                 <p className="font-medium">{hire.startDate}</p>
                                             </div>
@@ -881,10 +1346,7 @@ const RecruitmentOnboarding = () => {
                                                 <span className="text-muted-foreground">Salary</span>
                                                 <p className="font-medium">{hire.salary}</p>
                                             </div>
-                                            <div>
-                                                <span className="text-muted-foreground">Source</span>
-                                                <p className="font-medium">{hire.source}</p>
-                                            </div>
+
                                         </div>
 
                                         <div className="mt-3">
@@ -1043,11 +1505,11 @@ const RecruitmentOnboarding = () => {
                     </div>
                 </div>
 
-                <TabsList className="grid w-full grid-cols-6">
+                {/* Updated to 5 tabs */}
+                <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+                    <TabsTrigger value="pipeline">Candidates</TabsTrigger>
                     <TabsTrigger value="jobs">Job Postings</TabsTrigger>
-                    <TabsTrigger value="candidates">Candidates</TabsTrigger>
                     <TabsTrigger value="interviews">Interviews</TabsTrigger>
                     <TabsTrigger value="hired">Hired</TabsTrigger>
                 </TabsList>
@@ -1057,15 +1519,11 @@ const RecruitmentOnboarding = () => {
                 </TabsContent>
 
                 <TabsContent value="pipeline" className="mt-6">
-                    {renderPipeline()}
+                    {renderPipelineView()}
                 </TabsContent>
 
                 <TabsContent value="jobs" className="mt-6">
                     {renderJobPostings()}
-                </TabsContent>
-
-                <TabsContent value="candidates" className="mt-6">
-                    {renderCandidates()}
                 </TabsContent>
 
                 <TabsContent value="interviews" className="mt-6">
@@ -1131,14 +1589,15 @@ const RecruitmentOnboarding = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="interviewer">Interviewer *</Label>
+                                // Update the interviewer selection to use actual employees from your API
                                 <Select value={newInterview.interviewer} onValueChange={(value) => setNewInterview({ ...newInterview, interviewer: value })}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select interviewer" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {mockEmployees.map(emp => (
-                                            <SelectItem key={emp.id} value={`${emp.firstName} ${emp.lastName}`}>
-                                                {emp.firstName} {emp.lastName}
+                                            <SelectItem key={emp.id} value={emp.id.toString()}>
+                                                {emp.firstName} {emp.lastName} - {emp.position}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

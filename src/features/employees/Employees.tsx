@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Search, Edit, Eye } from "lucide-react";
 import EmployeeDialog from './components/EmployeeDialog';
@@ -170,6 +170,7 @@ const Employees = () => {
                                 <TableRow key={employee.id}>
                                     <TableCell className="flex items-center space-x-3">
                                         <Avatar>
+
                                             <AvatarFallback>
                                                 {getInitials(employee.first_name, employee.last_name)}
                                             </AvatarFallback>
@@ -184,7 +185,7 @@ const Employees = () => {
                                         </div>
                                     </TableCell>
                                     <TableCell>{employee.department?.department_name || 'N/A'}</TableCell>
-                                    <TableCell>{employee.position?.title || 'N/A'}</TableCell>
+                                    <TableCell>{employee.position?.position_name || 'N/A'}</TableCell>
                                     <TableCell>
                                         <Badge variant={employee.is_active ? 'default' : 'secondary'}>
                                             {employee.is_active ? 'active' : 'inactive'}

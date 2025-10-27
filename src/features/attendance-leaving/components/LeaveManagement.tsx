@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,19 +9,90 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Check, X, Eye } from "lucide-react";
-import { mockLeaveRequests } from '@/features/data/mockData';
-import type { LeaveRequest } from '@/features/data/types';
+import { Plus, Check, X, Eye, RefreshCw } from "lucide-react";
 import { format, differenceInDays } from 'date-fns';
+const API_BASE_URL = 'https://api-hris.slarenasitsolutions.com/public/api';
+// Define types based on your backend response
+interface Employee {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    department_id: number;
+    position_id: number;
+}
+
+interface LeaveType {
+    id: number;
+    leave_name: string;
+    description: string;
+    max_days: number;
+    is_paid: boolean;
+    is_active: boolean;
+    is_archived: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+interface LeaveRequest {
+    id: number;
+    employee_id: number;
+    leave_type_id: number;
+    start_date: string;
+    end_date: string;
+    total_days: number;
+    reason: string;
+    status: string;
+    is_archived: number;
+    created_at: string;
+    updated_at: string;
+    employee: Employee;
+    leave_type: LeaveType;
+}
+
+interface LeaveResponse {
+    isSuccess: boolean;
+    data: LeaveRequest[];
+}
 
 const LeaveManagement = () => {
-    const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(mockLeaveRequests);
+    const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const token = localStorage.getItem('token');
+    // Fetch leave data from API
+    const fetchLeaveRequests = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            //
+            const response = await fetch(`${API_BASE_URL}/leaves`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data: LeaveResponse = await response.json();
+
+            if (data.isSuccess) {
+                setLeaveRequests(data.data);
+            } else {
+                setError('Failed to fetch leave requests');
+            }
+        } catch (err) {
+            console.error('Error fetching leave requests:', err);
+            setError('Failed to fetch leave requests');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchLeaveRequests();
+    }, []);
 
     const getStatusColor = (status: string) => {
-        switch (status) {
+        switch (status.toLowerCase()) {
             case 'approved':
                 return 'default';
             case 'pending':
@@ -34,10 +105,10 @@ const LeaveManagement = () => {
     };
 
     const getLeaveTypeColor = (type: string) => {
-        switch (type) {
+        switch (type.toLowerCase()) {
             case 'vacation':
                 return 'bg-blue-100 text-blue-800';
-            case 'sick':
+            case 'sick leave':
                 return 'bg-red-100 text-red-800';
             case 'personal':
                 return 'bg-green-100 text-green-800';
@@ -50,28 +121,43 @@ const LeaveManagement = () => {
         }
     };
 
-    const getInitials = (name: string) => {
-        const names = name.split(' ');
-        return names.map(n => n.charAt(0)).join('').toUpperCase();
+    const getInitials = (firstName: string, lastName: string) => {
+        return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
     };
 
-    const handleApprove = (id: string) => {
-        setLeaveRequests(prev =>
-            prev.map(request =>
-                request.id === id ? { ...request, status: 'approved' as const } : request
-            )
-        );
+    const getEmployeeName = (employee: Employee) => {
+        return `${employee.first_name} ${employee.last_name}`;
     };
 
-    const handleReject = (id: string) => {
-        setLeaveRequests(prev =>
-            prev.map(request =>
-                request.id === id ? { ...request, status: 'rejected' as const } : request
-            )
-        );
+    const handleApprove = async (id: number) => {
+        try {
+            // Replace with your actual API call
+            const response = await fetch(`${API_BASE_URL}/leave-requests/${id}/approve`, {
+                method: 'POST',
+            });
+            if (response.ok) {
+                fetchLeaveRequests(); // Refresh the list
+            }
+        } catch (err) {
+            console.error('Error approving leave:', err);
+        }
     };
 
-    const handleAddLeaveRequest = (event: React.FormEvent) => {
+    const handleReject = async (id: number) => {
+        try {
+            // Replace with your actual API call
+            const response = await fetch(`${API_BASE_URL}/leave-requests/${id}/reject`, {
+                method: 'POST',
+            });
+            if (response.ok) {
+                fetchLeaveRequests(); // Refresh the list
+            }
+        } catch (err) {
+            console.error('Error rejecting leave:', err);
+        }
+    };
+
+    const handleAddLeaveRequest = async (event: React.FormEvent) => {
         event.preventDefault();
         const formData = new FormData(event.target as HTMLFormElement);
 
@@ -79,84 +165,126 @@ const LeaveManagement = () => {
         const endDate = formData.get('endDate') as string;
         const days = differenceInDays(new Date(endDate), new Date(startDate)) + 1;
 
-        const newRequest: LeaveRequest = {
-            id: (leaveRequests.length + 1).toString(),
-            employeeId: 'EMP001', // In real app, this would be current user
-            employeeName: 'Current User',
-            leaveType: formData.get('leaveType') as any,
-            startDate,
-            endDate,
-            days,
+        const leaveData = {
+            employee_id: 1, // In real app, this would be current user's ID
+            leave_type_id: formData.get('leaveType'),
+            start_date: startDate,
+            end_date: endDate,
+            total_days: days,
+            reason: formData.get('reason'),
             status: 'pending',
-            reason: formData.get('reason') as string,
-            appliedDate: new Date().toISOString().split('T')[0],
         };
 
-        setLeaveRequests([...leaveRequests, newRequest]);
-        setIsAddDialogOpen(false);
+        try {
+            // Replace with your actual API call
+            const response = await fetch(`${API_BASE_URL}/leave-requests`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(leaveData),
+            });
+
+            if (response.ok) {
+                setIsAddDialogOpen(false);
+                fetchLeaveRequests(); // Refresh the list
+            }
+        } catch (err) {
+            console.error('Error creating leave request:', err);
+        }
     };
 
-    const pendingRequests = leaveRequests.filter(r => r.status === 'pending').length;
-    const approvedRequests = leaveRequests.filter(r => r.status === 'approved').length;
-    const rejectedRequests = leaveRequests.filter(r => r.status === 'rejected').length;
+    const pendingRequests = leaveRequests.filter(r => r.status.toLowerCase() === 'pending').length;
+    const approvedRequests = leaveRequests.filter(r => r.status.toLowerCase() === 'approved').length;
+    const rejectedRequests = leaveRequests.filter(r => r.status.toLowerCase() === 'rejected').length;
+
+    if (loading) {
+        return (
+            <div className="p-6 flex justify-center items-center">
+                <RefreshCw className="w-6 h-6 animate-spin" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-6">
+                <Card>
+                    <CardContent className="p-6 text-center">
+                        <div className="text-red-500">{error}</div>
+                        <Button onClick={fetchLeaveRequests} className="mt-4">
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Retry
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1>Leave Management</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Leave Management</h1>
                     <p className="text-muted-foreground">
                         Manage employee leave requests and approvals
                     </p>
                 </div>
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Leave Request
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>New Leave Request</DialogTitle>
-                            <DialogDescription>
-                                Submit a new leave request for approval.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleAddLeaveRequest} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="leaveType">Leave Type</Label>
-                                <Select name="leaveType" required>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select leave type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="vacation">Vacation</SelectItem>
-                                        <SelectItem value="sick">Sick Leave</SelectItem>
-                                        <SelectItem value="personal">Personal</SelectItem>
-                                        <SelectItem value="maternity">Maternity</SelectItem>
-                                        <SelectItem value="paternity">Paternity</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={fetchLeaveRequests}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Refresh
+                    </Button>
+                    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                New Leave Request
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>New Leave Request</DialogTitle>
+                                <DialogDescription>
+                                    Submit a new leave request for approval.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleAddLeaveRequest} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="startDate">Start Date</Label>
-                                    <Input name="startDate" type="date" required />
+                                    <Label htmlFor="leaveType">Leave Type</Label>
+                                    <Select name="leaveType" required>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select leave type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="1">Sick Leave</SelectItem>
+                                            <SelectItem value="2">Vacation</SelectItem>
+                                            <SelectItem value="3">Personal</SelectItem>
+                                            <SelectItem value="4">Maternity</SelectItem>
+                                            <SelectItem value="5">Paternity</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="startDate">Start Date</Label>
+                                        <Input name="startDate" type="date" required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="endDate">End Date</Label>
+                                        <Input name="endDate" type="date" required />
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="endDate">End Date</Label>
-                                    <Input name="endDate" type="date" required />
+                                    <Label htmlFor="reason">Reason</Label>
+                                    <Textarea name="reason" placeholder="Please provide a reason for your leave request" required />
                                 </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="reason">Reason</Label>
-                                <Textarea name="reason" placeholder="Please provide a reason for your leave request" required />
-                            </div>
-                            <Button type="submit" className="w-full">Submit Request</Button>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                                <Button type="submit" className="w-full">Submit Request</Button>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             {/* Leave Summary */}
@@ -210,89 +338,95 @@ const LeaveManagement = () => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Employee</TableHead>
-                                <TableHead>Leave Type</TableHead>
-                                <TableHead>Duration</TableHead>
-                                <TableHead>Dates</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Applied</TableHead>
-                                <TableHead>Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {leaveRequests.map((request) => (
-                                <TableRow key={request.id}>
-                                    <TableCell className="flex items-center space-x-3">
-                                        <Avatar>
-                                            <AvatarFallback>
-                                                {getInitials(request.employeeName)}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <div className="font-medium">{request.employeeName}</div>
-                                            <div className="text-sm text-muted-foreground">
-                                                {request.employeeId}
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className={getLeaveTypeColor(request.leaveType)}>
-                                            {request.leaveType}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>{request.days} day{request.days > 1 ? 's' : ''}</TableCell>
-                                    <TableCell>
-                                        <div className="text-sm">
-                                            {format(new Date(request.startDate), 'MMM dd')} - {format(new Date(request.endDate), 'MMM dd, yyyy')}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={getStatusColor(request.status)}>
-                                            {request.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>{format(new Date(request.appliedDate), 'MMM dd, yyyy')}</TableCell>
-                                    <TableCell>
-                                        <div className="flex space-x-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setSelectedRequest(request);
-                                                    setIsViewDialogOpen(true);
-                                                }}
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                            </Button>
-                                            {request.status === 'pending' && (
-                                                <>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => handleApprove(request.id)}
-                                                        className="text-green-600 hover:text-green-700"
-                                                    >
-                                                        <Check className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => handleReject(request.id)}
-                                                        className="text-red-600 hover:text-red-700"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </TableCell>
+                    {leaveRequests.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                            No leave requests found
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Employee</TableHead>
+                                    <TableHead>Leave Type</TableHead>
+                                    <TableHead>Duration</TableHead>
+                                    <TableHead>Dates</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Applied</TableHead>
+                                    <TableHead>Actions</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {leaveRequests.map((request) => (
+                                    <TableRow key={request.id}>
+                                        <TableCell className="flex items-center space-x-3">
+                                            <Avatar>
+                                                <AvatarFallback>
+                                                    {getInitials(request.employee.first_name, request.employee.last_name)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <div className="font-medium">{getEmployeeName(request.employee)}</div>
+                                                <div className="text-sm text-muted-foreground">
+                                                    {request.employee.email}
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className={getLeaveTypeColor(request.leave_type.leave_name)}>
+                                                {request.leave_type.leave_name}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>{request.total_days} day{request.total_days > 1 ? 's' : ''}</TableCell>
+                                        <TableCell>
+                                            <div className="text-sm">
+                                                {format(new Date(request.start_date), 'MMM dd')} - {format(new Date(request.end_date), 'MMM dd, yyyy')}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={getStatusColor(request.status)}>
+                                                {request.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>{format(new Date(request.created_at), 'MMM dd, yyyy')}</TableCell>
+                                        <TableCell>
+                                            <div className="flex space-x-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedRequest(request);
+                                                        setIsViewDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                                {request.status.toLowerCase() === 'pending' && (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleApprove(request.id)}
+                                                            className="text-green-600 hover:text-green-700"
+                                                        >
+                                                            <Check className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleReject(request.id)}
+                                                            className="text-red-600 hover:text-red-700"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
                 </CardContent>
             </Card>
 
@@ -310,12 +444,12 @@ const LeaveManagement = () => {
                             <div className="flex items-center space-x-4">
                                 <Avatar className="h-12 w-12">
                                     <AvatarFallback>
-                                        {getInitials(selectedRequest.employeeName)}
+                                        {getInitials(selectedRequest.employee.first_name, selectedRequest.employee.last_name)}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <h3 className="font-semibold">{selectedRequest.employeeName}</h3>
-                                    <p className="text-sm text-muted-foreground">{selectedRequest.employeeId}</p>
+                                    <h3 className="font-semibold">{getEmployeeName(selectedRequest.employee)}</h3>
+                                    <p className="text-sm text-muted-foreground">{selectedRequest.employee.email}</p>
                                 </div>
                                 <div className="ml-auto">
                                     <Badge variant={getStatusColor(selectedRequest.status)}>
@@ -327,33 +461,33 @@ const LeaveManagement = () => {
                                 <div>
                                     <Label>Leave Type</Label>
                                     <p className="text-sm">
-                                        <Badge variant="outline" className={getLeaveTypeColor(selectedRequest.leaveType)}>
-                                            {selectedRequest.leaveType}
+                                        <Badge variant="outline" className={getLeaveTypeColor(selectedRequest.leave_type.leave_name)}>
+                                            {selectedRequest.leave_type.leave_name}
                                         </Badge>
                                     </p>
                                 </div>
                                 <div>
                                     <Label>Duration</Label>
-                                    <p className="text-sm">{selectedRequest.days} day{selectedRequest.days > 1 ? 's' : ''}</p>
+                                    <p className="text-sm">{selectedRequest.total_days} day{selectedRequest.total_days > 1 ? 's' : ''}</p>
                                 </div>
                                 <div>
                                     <Label>Start Date</Label>
-                                    <p className="text-sm">{format(new Date(selectedRequest.startDate), 'PPP')}</p>
+                                    <p className="text-sm">{format(new Date(selectedRequest.start_date), 'PPP')}</p>
                                 </div>
                                 <div>
                                     <Label>End Date</Label>
-                                    <p className="text-sm">{format(new Date(selectedRequest.endDate), 'PPP')}</p>
+                                    <p className="text-sm">{format(new Date(selectedRequest.end_date), 'PPP')}</p>
                                 </div>
                                 <div className="col-span-2">
                                     <Label>Applied Date</Label>
-                                    <p className="text-sm">{format(new Date(selectedRequest.appliedDate), 'PPP')}</p>
+                                    <p className="text-sm">{format(new Date(selectedRequest.created_at), 'PPP')}</p>
                                 </div>
                             </div>
                             <div>
                                 <Label>Reason</Label>
                                 <p className="text-sm mt-1 p-3 bg-muted rounded-md">{selectedRequest.reason}</p>
                             </div>
-                            {selectedRequest.status === 'pending' && (
+                            {selectedRequest.status.toLowerCase() === 'pending' && (
                                 <div className="flex space-x-2 pt-4">
                                     <Button
                                         onClick={() => {

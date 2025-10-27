@@ -1,54 +1,97 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://hris-sms.slarenasitsolutions.com/api'; // Adjust to your Laravel backend URL
+const API_BASE_URL = 'https://api-hris.slarenasitsolutions.com/public/api';
 
-const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    },
-});
+export const applicantAPI = {
+    // Get all applicants
+    getAll: () => axios.get(`${API_BASE_URL}/applicants`),
 
-// Add request interceptor to include auth token if needed
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+    // Get applicant by ID
+    getById: (id: string) => axios.get(`${API_BASE_URL}/applicants/${id}`),
 
-// Add response interceptor for error handling
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            // Handle unauthorized access
-            localStorage.removeItem('auth_token');
-            window.location.href = '/login';
-        }
-        return Promise.reject(error);
-    }
-);
+    // Move applicant to different stage
+    moveStage: (id: string, stage: string) =>
+        axios.post(`${API_BASE_URL}/applicants/${id}/move`, { stage }),
 
-export const jobPostingAPI = {
-    // Create a new job posting
-    create: (jobData: any) => api.post('/job-postings', jobData),
+    // Hire applicant
+    hire: (id: string) => axios.post(`${API_BASE_URL}/applicants/${id}/hire`),
 
-    // Get all job postings with filters
-    getAll: (params = {}) => api.get('/job-postings', { params }),
-
-    // Update a job posting
-    update: (id: any, jobData: any) => api.put(`/job-postings/${id}`, jobData),
-
-    // Archive a job posting
-    archive: (id: any) => api.delete(`/job-postings/${id}`),
+    // Get hired applicants
+    getHired: () => axios.get(`${API_BASE_URL}/hired`),
 };
 
-export default api;
+// Job Posting API
+export const jobPostingAPI = {
+    // Get all job postings with optional filters
+    getAll: (params?: {
+        search?: string;
+        department_id?: string;
+        status?: string;
+        per_page?: number;
+    }) => axios.get(`${API_BASE_URL}/job-postings`, { params }),
+
+    // Create a new job posting
+    create: (data: {
+        title: string;
+        department_id: string;
+        work_type: string;
+        employment_type: string;
+        location?: string;
+        salary_range?: string;
+        description?: string;
+        status?: 'draft' | 'active' | 'closed';
+        posted_date?: string;
+        deadline_date?: string;
+    }) => axios.post(`${API_BASE_URL}/create/job-postings`, data),
+
+    // Update a job posting
+    update: (id: string, data: {
+        title?: string;
+        department_id?: string;
+        work_type?: string;
+        employment_type?: string;
+        location?: string;
+        salary_range?: string;
+        description?: string;
+        status?: 'draft' | 'active' | 'closed';
+        posted_date?: string;
+        deadline_date?: string;
+    }) => axios.post(`${API_BASE_URL}/update/job-postings/${id}`, data),
+
+    // Archive a job posting
+    archive: (id: string) => axios.post(`${API_BASE_URL}/archive/job-postings/${id}`),
+};
+
+
+
+
+
+export const interviewAPI = {
+    // Schedule a new interview
+    schedule: (applicantId: string, data: any) =>
+        axios.post(`${API_BASE_URL}/applicants/${applicantId}/schedule-interview`, data),
+
+    // Get all interviews
+    getAll: () =>
+        axios.get(`${API_BASE_URL}/interviews`),
+
+    // Get interviews for a specific applicant
+    getForApplicant: (applicantId: string) =>
+        axios.get(`${API_BASE_URL}/applicants/${applicantId}/interviews`),
+
+    // Submit feedback for an interview
+    submitFeedback: (id: string, data: any) =>
+        axios.post(`${API_BASE_URL}/interviews/${id}/feedback`, data),
+
+    // Update an interview
+    update: (id: string, data: any) =>
+        axios.post(`${API_BASE_URL}/interviews/${id}/update`, data),
+
+    // Cancel an interview
+    cancel: (id: string) =>
+        axios.post(`${API_BASE_URL}/interviews/${id}/cancel`),
+
+    // Mark interview as no-show
+    noshow: (id: string) =>
+        axios.post(`${API_BASE_URL}/interviews/${id}/noshow`),
+};

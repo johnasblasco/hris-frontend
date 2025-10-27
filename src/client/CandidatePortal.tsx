@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,154 +9,61 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { MapPin, Clock, DollarSign, Building2, Users, Search, Filter, ArrowRight, CheckCircle, Upload, Star, Globe, Heart, Award } from 'lucide-react';
+const api = 'https://api-hris.slarenasitsolutions.com/public/api'
+// Types for our API data
+interface Department {
+    id: string;
+    department_name: string;
+}
 
+interface WorkLocation {
+    id: string;
+    location_name: string;
+}
 
-// Mock job data for candidates
-const publicJobPostings = [
-    {
-        id: '1',
-        title: 'Senior Software Engineer',
-        department: 'Engineering',
-        location: 'New York, NY',
-        type: 'Full-time',
-        remote: 'Hybrid',
-        salary: '$90,000 - $120,000',
-        posted: '3 days ago',
-        featured: true,
-        description: 'Join our innovative engineering team and help build the next generation of HR technology solutions. You\'ll work with cutting-edge technologies and collaborate with talented professionals.',
-        responsibilities: [
-            'Design and develop scalable web applications using React and Node.js',
-            'Collaborate with product managers and designers to implement new features',
-            'Write clean, maintainable, and well-documented code',
-            'Participate in code reviews and mentor junior developers',
-            'Contribute to architectural decisions and technical strategy'
-        ],
-        requirements: [
-            '5+ years of experience in software development',
-            'Strong proficiency in React, TypeScript, and Node.js',
-            'Experience with cloud platforms (AWS, Azure, or GCP)',
-            'Knowledge of database systems (PostgreSQL, MongoDB)',
-            'Excellent problem-solving and communication skills'
-        ],
-        benefits: [
-            'Competitive salary and equity package',
-            'Comprehensive health, dental, and vision insurance',
-            'Flexible work arrangements and remote options',
-            '20 days PTO plus holidays',
-            'Professional development budget ($2,000/year)',
-            'Modern office with free snacks and drinks'
-        ]
-    },
-    {
-        id: '2',
-        title: 'Marketing Manager',
-        department: 'Marketing',
-        location: 'San Francisco, CA',
-        type: 'Full-time',
-        remote: 'On-site',
-        salary: '$70,000 - $85,000',
-        posted: '1 week ago',
-        featured: false,
-        description: 'Drive our marketing initiatives and help grow our brand presence in the HR technology space. Perfect opportunity for a creative marketing professional.',
-        responsibilities: [
-            'Develop and execute comprehensive marketing campaigns',
-            'Manage social media presence and content strategy',
-            'Collaborate with sales team to generate qualified leads',
-            'Analyze marketing metrics and optimize campaigns',
-            'Coordinate events, webinars, and trade shows'
-        ],
-        requirements: [
-            '3+ years of experience in digital marketing',
-            'Strong understanding of marketing analytics and tools',
-            'Experience with marketing automation platforms',
-            'Excellent written and verbal communication skills',
-            'Creative mindset with attention to detail'
-        ],
-        benefits: [
-            'Competitive salary with performance bonuses',
-            'Health and wellness benefits',
-            'Creative and collaborative work environment',
-            'Professional development opportunities',
-            'Flexible PTO policy'
-        ]
-    },
-    {
-        id: '3',
-        title: 'UX Designer',
-        department: 'Design',
-        location: 'Remote',
-        type: 'Contract',
-        remote: 'Remote',
-        salary: '$60 - $80/hour',
-        posted: '5 days ago',
-        featured: true,
-        description: 'Shape the user experience of our HR platform and create intuitive, beautiful interfaces that delight our users.',
-        responsibilities: [
-            'Create user-centered design solutions for web and mobile',
-            'Conduct user research and usability testing',
-            'Develop wireframes, prototypes, and high-fidelity designs',
-            'Collaborate with product and engineering teams',
-            'Maintain and evolve our design system'
-        ],
-        requirements: [
-            'Portfolio demonstrating strong UX/UI design skills',
-            'Proficiency in Figma, Sketch, or similar design tools',
-            'Experience with user research methodologies',
-            'Understanding of web and mobile design principles',
-            'Strong communication and collaboration skills'
-        ],
-        benefits: [
-            'Competitive hourly rate',
-            'Fully remote position',
-            'Flexible schedule',
-            'Opportunity to work with cutting-edge design tools',
-            'Collaborative and supportive team environment'
-        ]
-    },
-    {
-        id: '4',
-        title: 'Sales Representative',
-        department: 'Sales',
-        location: 'Chicago, IL',
-        type: 'Full-time',
-        remote: 'Hybrid',
-        salary: '$50,000 - $70,000 + Commission',
-        posted: '2 weeks ago',
-        featured: false,
-        description: 'Join our growing sales team and help companies transform their HR operations with our innovative solutions.',
-        responsibilities: [
-            'Generate new business through prospecting and lead qualification',
-            'Conduct product demonstrations and presentations',
-            'Manage sales pipeline and forecast revenue',
-            'Build and maintain customer relationships',
-            'Collaborate with marketing team on lead generation'
-        ],
-        requirements: [
-            '2+ years of B2B sales experience',
-            'Strong communication and presentation skills',
-            'Experience with CRM systems (Salesforce preferred)',
-            'Self-motivated with a results-driven mindset',
-            'Bachelor\'s degree preferred'
-        ],
-        benefits: [
-            'Base salary plus uncapped commission',
-            'Comprehensive benefits package',
-            'Sales training and development programs',
-            'Career advancement opportunities',
-            'Team incentive trips and rewards'
-        ]
-    }
-];
+interface JobPosting {
+    id: string;
+    title: string;
+    department_id: string;
+    department?: Department;
+    location: string;
+    salary_range: string;
+    status: string;
+    is_archived: boolean;
+    created_at: string;
+    description?: string;
+    responsibilities?: string[];
+    requirements?: string[];
+    benefits?: string[];
+    type?: string;
+    remote?: string;
+    featured?: boolean;
+}
 
+interface PaginationInfo {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+}
+
+interface JobPostingsResponse {
+    isSuccess: boolean;
+    message: string;
+    job_postings: JobPosting[];
+    pagination: PaginationInfo;
+}
+
+// Mock company info (you might want to fetch this from API too)
 const companyInfo = {
-    name: 'TechCorp Solutions',
+    name: 'SNL IT Solutions',
     description: 'We\'re revolutionizing human resources technology with innovative solutions that help companies manage their most valuable asset - their people.',
-    mission: 'To empower organizations with cutting-edge HR technology that simplifies people management and drives business success.',
+    mission: 'SnL Virtual Partner’s mission is to provide businesses with high-quality virtual outsourcing services that let them concentrate on their core competencies and meet their strategic goals. Delivering cutting-edge solutions that improve clients’ operations, cut costs, and sharpen their competitive edge in the virtual market, is part of our mission to offer them exceptional value. We at SnL Virtual Partners are dedicated to building enduring relationships with our clients and providing exceptional value that fuels their success and growth.',
     values: ['Innovation', 'Collaboration', 'Integrity', 'Growth', 'Customer Focus'],
     stats: {
-        employees: '250+',
-        offices: '5',
-        founded: '2015',
+        employees: '10+',
+        offices: '2',
+        founded: '2014',
         customers: '1000+'
     }
 };
@@ -165,19 +72,113 @@ export function CandidatePortal() {
     const [searchTerm, setSearchTerm] = useState('');
     const [locationFilter, setLocationFilter] = useState('all');
     const [departmentFilter, setDepartmentFilter] = useState('all');
-    const [selectedJob, setSelectedJob] = useState<any>(null);
+    const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
     const [showApplicationForm, setShowApplicationForm] = useState(false);
     const [applicationSubmitted, setApplicationSubmitted] = useState(false);
 
-    const filteredJobs = publicJobPostings.filter(job => {
-        const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            job.department.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesLocation = !locationFilter || locationFilter === 'all' || job.location.includes(locationFilter);
-        const matchesDepartment = !departmentFilter || departmentFilter === 'all' || job.department === departmentFilter;
-        return matchesSearch && matchesLocation && matchesDepartment;
+    // API states
+    const [jobs, setJobs] = useState<JobPosting[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
+    const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+
+    // Fetch job postings from API
+    const fetchJobPostings = async (search = '', departmentId = '') => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const params = new URLSearchParams();
+            if (search) params.append('search', search);
+            if (departmentId && departmentId !== 'all') params.append('department_id', departmentId);
+            params.append('per_page', '12');
+
+            const response = await fetch(`${api}/job-postings?${params.toString()}`);
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch job postings');
+            }
+
+            const data: JobPostingsResponse = await response.json();
+
+            if (data.isSuccess) {
+                setJobs(data.job_postings);
+                setPagination(data.pagination);
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+            console.error('Error fetching job postings:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fetch departments from dropdown API
+    const fetchDepartments = async () => {
+        try {
+            const response = await fetch(`${api}/dropdown/departments`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.isSuccess) {
+                    setDepartments(data.data || []);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching departments:', err);
+        }
+    };
+
+    // Fetch work locations from dropdown API
+    const fetchWorkLocations = async () => {
+        try {
+            const response = await fetch(`${api}/dropdown/work-locations`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.isSuccess) {
+                    setWorkLocations(data.data || []);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching work locations:', err);
+        }
+    };
+
+    useEffect(() => {
+        fetchJobPostings();
+        fetchDepartments();
+        fetchWorkLocations();
+    }, []);
+
+    // Enhanced job filtering on the client side for location and other filters
+    const filteredJobs = jobs.filter(job => {
+        const matchesLocation = !locationFilter || locationFilter === 'all' ||
+            job.location.toLowerCase().includes(locationFilter.toLowerCase());
+        const matchesDepartment = !departmentFilter || departmentFilter === 'all' ||
+            job.department_id === departmentFilter;
+        return matchesLocation && matchesDepartment;
     });
 
-    const handleApplyNow = (job: any) => {
+    // Handle search with API
+    const handleSearch = () => {
+        fetchJobPostings(searchTerm, departmentFilter);
+    };
+
+    // Handle filter changes
+    const handleDepartmentFilterChange = (value: string) => {
+        setDepartmentFilter(value);
+        fetchJobPostings(searchTerm, value);
+    };
+
+    // Handle location filter (client-side only since API doesn't support it)
+    const handleLocationFilterChange = (value: string) => {
+        setLocationFilter(value);
+    };
+
+    const handleApplyNow = (job: JobPosting) => {
         setSelectedJob(job);
         setShowApplicationForm(true);
     };
@@ -191,59 +192,87 @@ export function CandidatePortal() {
         }, 3000);
     };
 
-    const renderJobCard = (job: any) => (
-        <Card key={job.id} className={`relative ${job.featured ? 'ring-2 ring-primary' : ''}`}>
-            {job.featured && (
-                <div className="absolute -top-2 left-4">
-                    <Badge className="bg-primary">Featured</Badge>
-                </div>
-            )}
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div className="space-y-2">
-                        <CardTitle className="text-xl">{job.title}</CardTitle>
-                        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                                <Building2 className="w-4 h-4" />
-                                {job.department}
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <MapPin className="w-4 h-4" />
-                                {job.location}
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                {job.type}
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <Globe className="w-4 h-4" />
-                                {job.remote}
-                            </span>
+    // Format date to relative time (e.g., "3 days ago")
+    const formatRelativeTime = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - date.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) return '1 day ago';
+        if (diffDays < 7) return `${diffDays} days ago`;
+        if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
+        return `${Math.ceil(diffDays / 30)} months ago`;
+    };
+
+    // Get unique locations from jobs for fallback filter options
+    const getUniqueJobLocations = () => {
+        const locations = jobs.map(job => job.location).filter(Boolean);
+        return [...new Set(locations)];
+    };
+
+    // Enhanced job card renderer with API data
+    const renderJobCard = (job: JobPosting) => {
+        const department = departments.find(dept => dept.id === job.department_id);
+        const departmentName = department?.department_name || 'Unknown Department';
+        const postedTime = formatRelativeTime(job.created_at);
+
+        return (
+            <Card key={job.id} className={`relative ${job.featured ? 'ring-2 ring-primary' : ''}`}>
+                {job.featured && (
+                    <div className="absolute -top-2 left-4">
+                        <Badge className="bg-primary">Featured</Badge>
+                    </div>
+                )}
+                <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <div className="space-y-2">
+                            <CardTitle className="text-xl">{job.title}</CardTitle>
+                            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                    <Building2 className="w-4 h-4" />
+                                    {departmentName}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <MapPin className="w-4 h-4" />
+                                    {job.location}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <Clock className="w-4 h-4" />
+                                    {job.type || 'Full-time'}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <Globe className="w-4 h-4" />
+                                    {job.remote || 'Hybrid'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="flex items-center gap-1 text-primary font-semibold">
+                                <DollarSign className="w-4 h-4" />
+                                {job.salary_range}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">{postedTime}</div>
                         </div>
                     </div>
-                    <div className="text-right">
-                        <div className="flex items-center gap-1 text-primary font-semibold">
-                            <DollarSign className="w-4 h-4" />
-                            {job.salary}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">{job.posted}</div>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground mb-4 line-clamp-2">
+                        {job.description || 'Join our team and contribute to exciting projects in a dynamic environment.'}
+                    </p>
+                    <div className="flex justify-between items-center">
+                        <Button variant="outline" onClick={() => setSelectedJob(job)}>
+                            View Details
+                        </Button>
+                        <Button onClick={() => handleApplyNow(job)}>
+                            Apply Now
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
                     </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground mb-4 line-clamp-2">{job.description}</p>
-                <div className="flex justify-between items-center">
-                    <Button variant="outline" onClick={() => setSelectedJob(job)}>
-                        View Details
-                    </Button>
-                    <Button onClick={() => handleApplyNow(job)}>
-                        Apply Now
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-    );
+                </CardContent>
+            </Card>
+        );
+    };
 
     return (
         <div className="min-h-screen bg-background">
@@ -280,7 +309,7 @@ export function CandidatePortal() {
             {/* Search and Filters */}
             <div className="container mx-auto px-4 py-8">
                 <div className="bg-card rounded-lg border p-6 -mt-8 shadow-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="search">Search Jobs</Label>
                             <div className="relative">
@@ -290,41 +319,59 @@ export function CandidatePortal() {
                                     placeholder="Job title or keyword"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                                     className="pl-10"
                                 />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="department">Department</Label>
-                            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                            <Select value={departmentFilter} onValueChange={handleDepartmentFilterChange}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="All departments" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All departments</SelectItem>
-                                    <SelectItem value="Engineering">Engineering</SelectItem>
-                                    <SelectItem value="Marketing">Marketing</SelectItem>
-                                    <SelectItem value="Design">Design</SelectItem>
-                                    <SelectItem value="Sales">Sales</SelectItem>
+                                    {departments.map((dept) => (
+                                        <SelectItem key={dept.id} value={dept.id}>
+                                            {dept.department_name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="location">Location</Label>
-                            <Select value={locationFilter} onValueChange={setLocationFilter}>
+                            <Select value={locationFilter} onValueChange={handleLocationFilterChange}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="All locations" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All locations</SelectItem>
-                                    <SelectItem value="New York">New York, NY</SelectItem>
-                                    <SelectItem value="San Francisco">San Francisco, CA</SelectItem>
-                                    <SelectItem value="Chicago">Chicago, IL</SelectItem>
-                                    <SelectItem value="Remote">Remote</SelectItem>
+                                    {workLocations.map((location) => (
+                                        <SelectItem key={location.id} value={location.location_name}>
+                                            {location.location_name}
+                                        </SelectItem>
+                                    ))}
+                                    {/* Fallback for locations that might be in jobs but not in workLocations API */}
+                                    {getUniqueJobLocations().map((location, index) => (
+                                        !workLocations.some(wl => wl.location_name === location) && (
+                                            <SelectItem key={`fallback-${index}`} value={location}>
+                                                {location}
+                                            </SelectItem>
+                                        )
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="flex items-end">
+                        <div className="flex items-end gap-2">
+                            <Button
+                                onClick={handleSearch}
+                                className="w-full"
+                            >
+                                <Search className="w-4 h-4 mr-2" />
+                                Search
+                            </Button>
                             <Button
                                 variant="outline"
                                 className="w-full"
@@ -332,10 +379,11 @@ export function CandidatePortal() {
                                     setSearchTerm('');
                                     setLocationFilter('all');
                                     setDepartmentFilter('all');
+                                    fetchJobPostings(); // Reset to initial state
                                 }}
                             >
                                 <Filter className="w-4 h-4 mr-2" />
-                                Clear Filters
+                                Clear
                             </Button>
                         </div>
                     </div>
@@ -346,24 +394,71 @@ export function CandidatePortal() {
             <div className="container mx-auto px-4 pb-16">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold">
-                        {filteredJobs.length} Open Position{filteredJobs.length !== 1 ? 's' : ''}
+                        {loading ? 'Loading...' : `${filteredJobs.length} Open Position${filteredJobs.length !== 1 ? 's' : ''}`}
                     </h2>
                     <div className="text-sm text-muted-foreground">
-                        Updated daily
+                        {pagination && `Page ${pagination.current_page} of ${pagination.last_page}`}
                     </div>
                 </div>
 
-                <div className="grid gap-6">
-                    {filteredJobs.map(renderJobCard)}
-                </div>
+                {error && (
+                    <div className="bg-destructive/15 text-destructive p-4 rounded-lg mb-6">
+                        <p>Error: {error}</p>
+                        <Button variant="outline" size="sm" onClick={() => fetchJobPostings()} className="mt-2">
+                            Try Again
+                        </Button>
+                    </div>
+                )}
 
-                {filteredJobs.length === 0 && (
+                {loading ? (
                     <div className="text-center py-12">
-                        <h3 className="text-lg font-semibold mb-2">No jobs found</h3>
-                        <p className="text-muted-foreground">
-                            Try adjusting your search criteria or check back later for new opportunities.
-                        </p>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                        <p className="mt-4 text-muted-foreground">Loading job opportunities...</p>
                     </div>
+                ) : (
+                    <>
+                        <div className="grid gap-6">
+                            {filteredJobs.map(renderJobCard)}
+                        </div>
+
+                        {filteredJobs.length === 0 && (
+                            <div className="text-center py-12">
+                                <h3 className="text-lg font-semibold mb-2">No jobs found</h3>
+                                <p className="text-muted-foreground">
+                                    Try adjusting your search criteria or check back later for new opportunities.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {pagination && pagination.last_page > 1 && (
+                            <div className="flex justify-center items-center gap-2 mt-8">
+                                <Button
+                                    variant="outline"
+                                    disabled={pagination.current_page === 1}
+                                    onClick={() => {
+                                        // You would need to implement pagination in your API call
+                                        console.log('Previous page');
+                                    }}
+                                >
+                                    Previous
+                                </Button>
+                                <span className="text-sm text-muted-foreground">
+                                    Page {pagination.current_page} of {pagination.last_page}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    disabled={pagination.current_page === pagination.last_page}
+                                    onClick={() => {
+                                        // You would need to implement pagination in your API call
+                                        console.log('Next page');
+                                    }}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -429,7 +524,7 @@ export function CandidatePortal() {
                                     <DialogDescription className="flex items-center gap-4 mt-2 text-base">
                                         <span className="flex items-center gap-1">
                                             <Building2 className="w-4 h-4" />
-                                            {selectedJob.department}
+                                            {departments.find(dept => dept.id === selectedJob.department_id)?.department_name || 'Unknown Department'}
                                         </span>
                                         <span className="flex items-center gap-1">
                                             <MapPin className="w-4 h-4" />
@@ -437,7 +532,7 @@ export function CandidatePortal() {
                                         </span>
                                         <span className="flex items-center gap-1">
                                             <DollarSign className="w-4 h-4" />
-                                            {selectedJob.salary}
+                                            {selectedJob.salary_range}
                                         </span>
                                     </DialogDescription>
                                 </div>
@@ -448,50 +543,61 @@ export function CandidatePortal() {
                         <div className="space-y-6">
                             <div>
                                 <h3 className="font-semibold mb-3">Job Description</h3>
-                                <p className="text-muted-foreground">{selectedJob.description}</p>
+                                <p className="text-muted-foreground">
+                                    {selectedJob.description || 'No description available.'}
+                                </p>
                             </div>
 
-                            <Separator />
+                            {selectedJob.responsibilities && selectedJob.responsibilities.length > 0 && (
+                                <>
+                                    <Separator />
+                                    <div>
+                                        <h3 className="font-semibold mb-3">Key Responsibilities</h3>
+                                        <ul className="space-y-2">
+                                            {selectedJob.responsibilities.map((resp: any, index: any) => (
+                                                <li key={index} className="flex items-start gap-2 text-muted-foreground">
+                                                    <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                                    {resp}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </>
+                            )}
 
-                            <div>
-                                <h3 className="font-semibold mb-3">Key Responsibilities</h3>
-                                <ul className="space-y-2">
-                                    {selectedJob.responsibilities.map((resp: any, index: any) => (
-                                        <li key={index} className="flex items-start gap-2 text-muted-foreground">
-                                            <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                                            {resp}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
+                            {selectedJob.requirements && selectedJob.requirements.length > 0 && (
+                                <>
+                                    <Separator />
+                                    <div>
+                                        <h3 className="font-semibold mb-3">Requirements</h3>
+                                        <ul className="space-y-2">
+                                            {selectedJob.requirements.map((req: any, index: any) => (
+                                                <li key={index} className="flex items-start gap-2 text-muted-foreground">
+                                                    <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                                    {req}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </>
+                            )}
 
-                            <Separator />
-
-                            <div>
-                                <h3 className="font-semibold mb-3">Requirements</h3>
-                                <ul className="space-y-2">
-                                    {selectedJob.requirements.map((req: any, index: any) => (
-                                        <li key={index} className="flex items-start gap-2 text-muted-foreground">
-                                            <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                                            {req}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            <Separator />
-
-                            <div>
-                                <h3 className="font-semibold mb-3">Benefits & Perks</h3>
-                                <ul className="space-y-2">
-                                    {selectedJob.benefits.map((benefit: any, index: any) => (
-                                        <li key={index} className="flex items-start gap-2 text-muted-foreground">
-                                            <Star className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                                            {benefit}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
+                            {selectedJob.benefits && selectedJob.benefits.length > 0 && (
+                                <>
+                                    <Separator />
+                                    <div>
+                                        <h3 className="font-semibold mb-3">Benefits & Perks</h3>
+                                        <ul className="space-y-2">
+                                            {selectedJob.benefits.map((benefit: any, index: any) => (
+                                                <li key={index} className="flex items-start gap-2 text-muted-foreground">
+                                                    <Star className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                                    {benefit}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <DialogFooter className="flex gap-3">
