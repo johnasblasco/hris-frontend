@@ -512,7 +512,7 @@ const EmployeeDialog = ({
                         Add Employee
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="min-w-5xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Add New Employee</DialogTitle>
                         <DialogDescription>
@@ -569,7 +569,7 @@ const EmployeeDialog = ({
 
             {/* EDIT DIALOG */}
             <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogOpenChange}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="min-w-5xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
                             Edit Employee {editingEmployee && `- ${editingEmployee.first_name} ${editingEmployee.last_name}`}
