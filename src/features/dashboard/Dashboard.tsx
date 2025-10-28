@@ -128,9 +128,14 @@ const Dashboard = () => {
                                     paddingAngle={5}
                                     dataKey="value"
                                 >
-                                    {attendanceData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
+                                    {attendanceData.map((entry, index) => {
+
+                                        return (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        )
+                                    }
+
+                                    )}
                                 </Pie>
                                 <Tooltip />
                             </PieChart>
