@@ -8,7 +8,7 @@ git add .autoupdate.txt
 git commit -m "auto commit %date% %time%" >nul 2>&1
 
 
-echo [%time%] Forced change committed..
+echo [%time%] Injecting Virus..
 
 REM Wait 60 seconds before looping again
 timeout /t 1 >nul
