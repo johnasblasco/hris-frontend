@@ -5,6 +5,10 @@ import RecruitmentPipeline from './tabs/RecruitmentPipeline';
 import RecruitmentJobPostings from './tabs/RecruitmentJobPostings';
 import RecruitmentInterviews from './tabs/RecruitmentInterviews';
 import RecruitmentHired from './tabs/RecruitmentHired';
+import JobFormDialog from './components/JobFormDialog';
+import InterviewDialog from './components/InterviewDialog';
+import CandidateDialog from './components/CandidateDialog';
+import JobDetailDialog from './components/JobDetailDialog';
 import { useRecruitmentData } from './hooks/useRecruitmentData';
 import { useRecruitmentDialogs } from './hooks/useRecruitmentDialog';
 import { useRecruitmentActions } from './hooks/useRecruitmentAction';
@@ -72,6 +76,22 @@ const RecruitmentOnboarding = () => {
     const handleOpenJobDetail = (job: any) => {
         setSelectedJob(job);
         setShowJobDetailDialog(true);
+    };
+
+    // Handler for creating job posting
+    const handleCreateJobPosting = async () => {
+        const success = await createJobPosting(newJob);
+        if (success) {
+            setShowJobDialog(false);
+        }
+    };
+
+    // Handler for scheduling interview
+    const handleScheduleInterview = async () => {
+        const success = await scheduleInterview(newInterview);
+        if (success) {
+            setShowInterviewDialog(false);
+        }
     };
 
     return (
@@ -146,7 +166,53 @@ const RecruitmentOnboarding = () => {
                 </TabsContent>
             </Tabs>
 
-            {/* Dialogs would go here */}
+            {/* Job Form Dialog */}
+            <JobFormDialog
+                open={showJobDialog}
+                onOpenChange={setShowJobDialog}
+                newJob={newJob}
+                onNewJobChange={setNewJob}
+                onCreateJob={handleCreateJobPosting}
+                loading={loading}
+            />
+
+            {/* Interview Dialog */}
+            <InterviewDialog
+                open={showInterviewDialog}
+                onOpenChange={setShowInterviewDialog}
+                newInterview={newInterview}
+                onNewInterviewChange={setNewInterview}
+                candidates={applicants}
+                onScheduleInterview={handleScheduleInterview}
+                loading={loading}
+            />
+
+            {/* Candidate Detail Dialog */}
+            <CandidateDialog
+                open={showCandidateDialog}
+                onOpenChange={setShowCandidateDialog}
+                candidate={selectedCandidate}
+                onMoveCandidateStage={moveCandidateToStage}
+                onScheduleInterview={() => {
+                    setShowCandidateDialog(false);
+                    setShowInterviewDialog(true);
+                    if (selectedCandidate) {
+                        setNewInterview({
+                            ...newInterview,
+                            candidateId: selectedCandidate.id,
+                            candidateName: selectedCandidate.name,
+                            position: selectedCandidate.position,
+                        });
+                    }
+                }}
+            />
+
+            {/* Job Detail Dialog */}
+            <JobDetailDialog
+                open={showJobDetailDialog}
+                onOpenChange={setShowJobDetailDialog}
+                job={selectedJob}
+            />
         </div>
     );
 };
