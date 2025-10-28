@@ -7,6 +7,7 @@ import RecruitmentInterviews from './tabs/RecruitmentInterviews';
 import RecruitmentHired from './tabs/RecruitmentHired';
 import { useRecruitmentData } from './hooks/useRecruitmentData';
 import { useRecruitmentDialogs } from './hooks/useRecruitmentDialog';
+import { useRecruitmentActions } from './hooks/useRecruitmentAction';
 
 const RecruitmentOnboarding = () => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -45,6 +46,34 @@ const RecruitmentOnboarding = () => {
         setNewInterview
     } = useRecruitmentDialogs();
 
+    const {
+        moveCandidateToStage,
+        hireApplicant,
+        createJobPosting,
+        updateJobStatus,
+        deleteJob,
+        scheduleInterview,
+        updateInterviewStatus,
+        submitInterviewFeedback
+    } = useRecruitmentActions({
+        fetchApplicants,
+        fetchHiredApplicants,
+        fetchJobPostings,
+        fetchInterviews
+    });
+
+    // Handler for opening candidate detail
+    const handleOpenCandidateDetail = (candidate: any) => {
+        setSelectedCandidate(candidate);
+        setShowCandidateDialog(true);
+    };
+
+    // Handler for opening job detail
+    const handleOpenJobDetail = (job: any) => {
+        setSelectedJob(job);
+        setShowJobDetailDialog(true);
+    };
+
     return (
         <div className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -68,7 +97,7 @@ const RecruitmentOnboarding = () => {
                         applicants={applicants}
                         interviews={interviews}
                         loading={loading}
-                        onOpenCandidateDetail={setSelectedCandidate}
+                        onOpenCandidateDetail={handleOpenCandidateDetail}
                         onShowJobDialog={setShowJobDialog}
                         onShowInterviewDialog={setShowInterviewDialog}
                         onSetActiveTab={setActiveTab}
@@ -82,9 +111,9 @@ const RecruitmentOnboarding = () => {
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
                         onRefresh={fetchApplicants}
-                        onOpenCandidateDetail={setSelectedCandidate}
-                        onMoveCandidateStage={() => { }} // You'll need to pass this
-                        onHireCandidate={() => { }} // You'll need to pass this
+                        onOpenCandidateDetail={handleOpenCandidateDetail}
+                        onMoveCandidateStage={moveCandidateToStage}
+                        onHireCandidate={hireApplicant}
                     />
                 </TabsContent>
 
@@ -93,7 +122,9 @@ const RecruitmentOnboarding = () => {
                         jobs={jobs}
                         loading={loading}
                         onShowJobDialog={setShowJobDialog}
-                        onOpenJobDetail={setSelectedJob}
+                        onOpenJobDetail={handleOpenJobDetail}
+                        onUpdateJobStatus={updateJobStatus}
+                        onDeleteJob={deleteJob}
                     />
                 </TabsContent>
 
@@ -102,7 +133,8 @@ const RecruitmentOnboarding = () => {
                         interviews={interviews}
                         candidates={applicants}
                         onShowInterviewDialog={setShowInterviewDialog}
-                        onUpdateInterviewStatus={() => { }} // You'll need to pass this
+                        onUpdateInterviewStatus={updateInterviewStatus}
+                        onSubmitInterviewFeedback={submitInterviewFeedback}
                     />
                 </TabsContent>
 
