@@ -179,6 +179,7 @@ export interface EmploymentInformation {
     role: string;
 
     // Documents
+    files: any;
     resume?: string | null;
     "201_file"?: string | null;
 }
