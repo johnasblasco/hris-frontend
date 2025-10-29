@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Check, X, Eye, RefreshCw } from "lucide-react";
 import { format, differenceInDays } from 'date-fns';
+
 const API_BASE_URL = 'https://api-hris.slarenasitsolutions.com/public/api';
+
 // Define types based on your backend response
 interface Employee {
     id: number;
@@ -62,16 +64,25 @@ const LeaveManagement = () => {
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [actionLoading, setActionLoading] = useState<number | null>(null);
     const token = localStorage.getItem('token');
+
     // Fetch leave data from API
     const fetchLeaveRequests = async () => {
         setLoading(true);
         setError(null);
         try {
-            //
             const response = await fetch(`${API_BASE_URL}/leaves`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const data: LeaveResponse = await response.json();
 
             if (data.isSuccess) {
@@ -90,6 +101,54 @@ const LeaveManagement = () => {
     useEffect(() => {
         fetchLeaveRequests();
     }, []);
+
+    const handleConfirmLeave = async (id: number, status: 'Approved' | 'Rejected') => {
+        setActionLoading(id);
+        try {
+            const response = await fetch(`${API_BASE_URL}/confirm-leave/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ status }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.isSuccess) {
+                // Update the local state with the updated leave request
+                setLeaveRequests(prev =>
+                    prev.map(request =>
+                        request.id === id ? { ...request, status: status } : request
+                    )
+                );
+
+                // Show success message (you can replace this with a toast notification)
+                alert(`Leave request ${status.toLowerCase()} successfully.`);
+            } else {
+                throw new Error(result.message || 'Failed to update leave request');
+            }
+        } catch (err) {
+            console.error(`Error ${status.toLowerCase()}ing leave:`, err);
+            alert(`Failed to ${status.toLowerCase()} leave request. Please try again.`);
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleApprove = async (id: number) => {
+        await handleConfirmLeave(id, 'Approved');
+    };
+
+    const handleReject = async (id: number) => {
+        await handleConfirmLeave(id, 'Rejected');
+    };
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
@@ -129,34 +188,6 @@ const LeaveManagement = () => {
         return `${employee.first_name} ${employee.last_name}`;
     };
 
-    const handleApprove = async (id: number) => {
-        try {
-            // Replace with your actual API call
-            const response = await fetch(`${API_BASE_URL}/leave-requests/${id}/approve`, {
-                method: 'POST',
-            });
-            if (response.ok) {
-                fetchLeaveRequests(); // Refresh the list
-            }
-        } catch (err) {
-            console.error('Error approving leave:', err);
-        }
-    };
-
-    const handleReject = async (id: number) => {
-        try {
-            // Replace with your actual API call
-            const response = await fetch(`${API_BASE_URL}/leave-requests/${id}/reject`, {
-                method: 'POST',
-            });
-            if (response.ok) {
-                fetchLeaveRequests(); // Refresh the list
-            }
-        } catch (err) {
-            console.error('Error rejecting leave:', err);
-        }
-    };
-
     const handleAddLeaveRequest = async (event: React.FormEvent) => {
         event.preventDefault();
         const formData = new FormData(event.target as HTMLFormElement);
@@ -176,10 +207,10 @@ const LeaveManagement = () => {
         };
 
         try {
-            // Replace with your actual API call
             const response = await fetch(`${API_BASE_URL}/leave-requests`, {
                 method: 'POST',
                 headers: {
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(leaveData),
@@ -407,16 +438,26 @@ const LeaveManagement = () => {
                                                             size="sm"
                                                             onClick={() => handleApprove(request.id)}
                                                             className="text-green-600 hover:text-green-700"
+                                                            disabled={actionLoading === request.id}
                                                         >
-                                                            <Check className="h-4 w-4" />
+                                                            {actionLoading === request.id ? (
+                                                                <RefreshCw className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <Check className="h-4 w-4" />
+                                                            )}
                                                         </Button>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             onClick={() => handleReject(request.id)}
                                                             className="text-red-600 hover:text-red-700"
+                                                            disabled={actionLoading === request.id}
                                                         >
-                                                            <X className="h-4 w-4" />
+                                                            {actionLoading === request.id ? (
+                                                                <RefreshCw className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <X className="h-4 w-4" />
+                                                            )}
                                                         </Button>
                                                     </>
                                                 )}
@@ -495,8 +536,13 @@ const LeaveManagement = () => {
                                             setIsViewDialogOpen(false);
                                         }}
                                         className="flex-1"
+                                        disabled={actionLoading === selectedRequest.id}
                                     >
-                                        <Check className="mr-2 h-4 w-4" />
+                                        {actionLoading === selectedRequest.id ? (
+                                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Check className="mr-2 h-4 w-4" />
+                                        )}
                                         Approve
                                     </Button>
                                     <Button
@@ -506,8 +552,13 @@ const LeaveManagement = () => {
                                             setIsViewDialogOpen(false);
                                         }}
                                         className="flex-1"
+                                        disabled={actionLoading === selectedRequest.id}
                                     >
-                                        <X className="mr-2 h-4 w-4" />
+                                        {actionLoading === selectedRequest.id ? (
+                                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <X className="mr-2 h-4 w-4" />
+                                        )}
                                         Reject
                                     </Button>
                                 </div>
