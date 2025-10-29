@@ -1,181 +1,208 @@
-import { toast } from "sonner";
-import { applicantAPI, jobPostingAPI, interviewAPI } from '../services/api';
+// hooks/useRecruitmentActions.ts
+import { useState } from 'react';
+import api from '@/utils/axios';
 import { stageMapping } from '../utils/constant';
+interface UseRecruitmentActionsProps {
+    fetchApplicants: () => void;
+    fetchHiredApplicants: () => void;
+    fetchJobPostings: () => void;
+    fetchInterviews: () => void;
+}
 
 export const useRecruitmentActions = ({
     fetchApplicants,
     fetchHiredApplicants,
     fetchJobPostings,
-    fetchInterviews,
-    setJobs,
-    setApplicants,
-    setInterviews
-}: any) => {
-    const moveCandidateToStage = async (candidateId: string, newStage: string) => {
+    fetchInterviews
+}: UseRecruitmentActionsProps) => {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // hooks/useRecruitmentActions.ts
+    const moveCandidateToStage = async (candidateId: string, stage: string) => {
+        setLoading(true);
+        setError(null);
         try {
-            const backendStage = stageMapping[newStage as keyof typeof stageMapping];
-            const response = await applicantAPI.moveStage(candidateId, backendStage);
+            console.log('🔍 Original stage:', stage);
+
+            // Map the frontend stage to backend stage
+            const backendStage = stageMapping[stage as keyof typeof stageMapping];
+
+            if (!backendStage) {
+                throw new Error(`Invalid stage: ${stage}`);
+            }
+
+            console.log('🔧 Mapped to backend stage:', backendStage);
+
+            const response = await api.post(`/applicants/${candidateId}/move`, {
+                stage: backendStage
+            });
+
+            console.log('✅ API Response:', response.data);
 
             if (response.data.isSuccess) {
-                setApplicants((prev: any) => prev.map((app: any) =>
-                    app.id === candidateId ? { ...app, stage: newStage } : app
-                ));
-
-                toast.success(`Candidate moved to stage`);
-                fetchApplicants();
-
-                if (newStage === 'hired') {
-                    fetchHiredApplicants();
-                    toast.success('Candidate hired successfully!');
-                }
+                await fetchApplicants();
+                return true;
+            } else {
+                throw new Error(response.data.message);
             }
-        } catch (error: any) {
-            console.error('Error moving applicant stage:', error);
-            const errorMessage = error.response?.data?.message || 'Failed to move applicant stage';
-            toast.error(errorMessage);
+        } catch (err: any) {
+            console.error('❌ Error moving candidate:', {
+                originalStage: stage,
+                error: err.message,
+                response: err.response?.data
+            });
+            setError(err.response?.data?.message || err.message || 'Failed to move candidate');
+            return false;
+        } finally {
+            setLoading(false);
         }
     };
-
     const hireApplicant = async (candidateId: string) => {
+        setLoading(true);
+        setError(null);
         try {
-            const response = await applicantAPI.hire(candidateId);
+            const response = await api.post(`/applicants/${candidateId}/hire`);
 
             if (response.data.isSuccess) {
-                setApplicants((prev: any) => prev.map((app: any) =>
-                    app.id === candidateId ? { ...app, stage: 'hired' } : app
-                ));
-
-                fetchHiredApplicants();
-                toast.success('Candidate hired successfully!');
+                // Refetch both lists
+                await Promise.all([fetchApplicants(), fetchHiredApplicants()]);
+                return true;
+            } else {
+                throw new Error(response.data.message);
             }
-        } catch (error: any) {
-            console.error('Error hiring applicant:', error);
-            const errorMessage = error.response?.data?.message || 'Failed to hire applicant';
-            toast.error(errorMessage);
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || 'Failed to hire candidate');
+            console.error('Error hiring candidate:', err);
+            return false;
+        } finally {
+            setLoading(false);
         }
     };
 
     const createJobPosting = async (jobData: any) => {
-        if (!jobData.title || !jobData.department_id || !jobData.location) {
-            toast.error('Please fill in all required fields');
-            return;
-        }
-
+        setLoading(true);
+        setError(null);
         try {
-            const response = await jobPostingAPI.create(jobData);
+            const response = await api.post('/jobs', jobData);
 
             if (response.data.isSuccess) {
-                toast.success('Job posting created successfully!');
-                fetchJobPostings();
+                await fetchJobPostings();
                 return true;
+            } else {
+                throw new Error(response.data.message);
             }
-        } catch (error: any) {
-            console.error('Error creating job posting:', error);
-            const errorMessage = error.response?.data?.message || 'Failed to create job posting';
-            toast.error(errorMessage);
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || 'Failed to create job posting');
+            console.error('Error creating job:', err);
+            return false;
+        } finally {
+            setLoading(false);
         }
-        return false;
     };
 
-    const updateJobStatus = async (jobId: string, status: 'active' | 'draft' | 'closed') => {
+    const updateJobStatus = async (jobId: string, status: string) => {
+        setLoading(true);
+        setError(null);
         try {
-            const response = await jobPostingAPI.update(jobId, { status });
+            const response = await api.patch(`/jobs/${jobId}/status`, { status });
 
             if (response.data.isSuccess) {
-                setJobs((prev: any) => prev.map((j: any) =>
-                    j.id === jobId ? { ...j, status } : j
-                ));
-                toast.success(`Job ${status === 'closed' ? 'closed' : 'updated'}`);
-                fetchJobPostings();
+                await fetchJobPostings();
+                return true;
+            } else {
+                throw new Error(response.data.message);
             }
-        } catch (error: any) {
-            console.error('Error updating job status:', error);
-            const errorMessage = error.response?.data?.message || 'Failed to update job status';
-            toast.error(errorMessage);
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || 'Failed to update job status');
+            console.error('Error updating job status:', err);
+            return false;
+        } finally {
+            setLoading(false);
         }
     };
 
     const deleteJob = async (jobId: string) => {
+        setLoading(true);
+        setError(null);
         try {
-            const response = await jobPostingAPI.archive(jobId);
+            const response = await api.delete(`/jobs/${jobId}`);
 
             if (response.data.isSuccess) {
-                setJobs((prev: any) => prev.filter((j: any) => j.id !== jobId));
-                toast.success('Job posting archived successfully');
-                fetchJobPostings();
+                await fetchJobPostings();
+                return true;
+            } else {
+                throw new Error(response.data.message);
             }
-        } catch (error: any) {
-            console.error('Error archiving job posting:', error);
-            const errorMessage = error.response?.data?.message || 'Failed to archive job posting';
-            toast.error(errorMessage);
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || 'Failed to delete job');
+            console.error('Error deleting job:', err);
+            return false;
+        } finally {
+            setLoading(false);
         }
     };
 
     const scheduleInterview = async (interviewData: any) => {
-        if (!interviewData.candidateId || !interviewData.date || !interviewData.time || !interviewData.interviewer) {
-            toast.error('Please fill in all required fields');
-            return;
-        }
-
+        setLoading(true);
+        setError(null);
         try {
-            const scheduledAt = `${interviewData.date} ${interviewData.time}:00`;
-            const apiData = {
-                applicant_id: parseInt(interviewData.candidateId),
-                position: interviewData.position,
-                interviewer_id: 10, // You'll need to get this from your employees data
-                mode: interviewData.type === 'Virtual' ? 'virtual' : 'in-person',
-                scheduled_at: scheduledAt,
-                stage: interviewData.type.toLowerCase().replace(' ', '_'),
-                location_link: interviewData.type === 'Virtual' ? interviewData.meetingLink : interviewData.location,
-                notes: interviewData.notes,
-                status: 'scheduled'
-            };
-
-            const response = await interviewAPI.schedule(interviewData.candidateId, apiData);
+            const response = await api.post('/interviews', interviewData);
 
             if (response.data.isSuccess) {
-                toast.success('Interview scheduled successfully!');
-                fetchInterviews();
+                await fetchInterviews();
                 return true;
+            } else {
+                throw new Error(response.data.message);
             }
-        } catch (error: any) {
-            console.error('Error scheduling interview:', error);
-            const errorMessage = error.response?.data?.message || 'Failed to schedule interview';
-            toast.error(errorMessage);
-        }
-        return false;
-    };
-
-    const updateInterviewStatus = async (interviewId: string, status: string, additionalData: any = {}) => {
-        try {
-            const response = await interviewAPI.update(interviewId, {
-                status,
-                ...additionalData
-            });
-
-            if (response.data.isSuccess) {
-                toast.success(`Interview ${status} successfully`);
-                fetchInterviews();
-            }
-        } catch (error: any) {
-            console.error('Error updating interview:', error);
-            const errorMessage = error.response?.data?.message || 'Failed to update interview';
-            toast.error(errorMessage);
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || 'Failed to schedule interview');
+            console.error('Error scheduling interview:', err);
+            return false;
+        } finally {
+            setLoading(false);
         }
     };
 
-    const submitInterviewFeedback = async (interviewId: string, feedback: string) => {
+    const updateInterviewStatus = async (interviewId: string, status: string) => {
+        setLoading(true);
+        setError(null);
         try {
-            const response = await interviewAPI.submitFeedback(interviewId, { feedback });
+            const response = await api.patch(`/interviews/${interviewId}/status`, { status });
 
             if (response.data.isSuccess) {
-                toast.success('Feedback submitted successfully');
-                fetchInterviews();
+                await fetchInterviews();
+                return true;
+            } else {
+                throw new Error(response.data.message);
             }
-        } catch (error: any) {
-            console.error('Error submitting feedback:', error);
-            const errorMessage = error.response?.data?.message || 'Failed to submit feedback';
-            toast.error(errorMessage);
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || 'Failed to update interview status');
+            console.error('Error updating interview status:', err);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const submitInterviewFeedback = async (interviewId: string, feedback: any) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await api.post(`/interviews/${interviewId}/feedback`, feedback);
+
+            if (response.data.isSuccess) {
+                await fetchInterviews();
+                return true;
+            } else {
+                throw new Error(response.data.message);
+            }
+        } catch (err: any) {
+            setError(err.response?.data?.message || err.message || 'Failed to submit feedback');
+            console.error('Error submitting feedback:', err);
+            return false;
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -187,6 +214,8 @@ export const useRecruitmentActions = ({
         deleteJob,
         scheduleInterview,
         updateInterviewStatus,
-        submitInterviewFeedback
+        submitInterviewFeedback,
+        loading,
+        error
     };
 };

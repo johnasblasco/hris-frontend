@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import type { Employee, Department, PositionType } from '../employeeTS';
 import api from '@/utils/axios'
 import { useEffect, useState } from "react"
-
+import type { EmployeeFormData } from "../employeeTS";
 interface EmployeeDialogProps {
     editingEmployee: Employee | null;
     setEditingEmployee: (employee: Employee | null) => void;
@@ -22,6 +22,8 @@ interface EmployeeDialogProps {
     onEmployeeUpdated: () => void;
     onEmployeeArchived: () => void;
 }
+
+
 
 const EmployeeDialog = ({
     editingEmployee,
@@ -39,21 +41,316 @@ const EmployeeDialog = ({
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState("personal");
     const [resumeFile, setResumeFile] = useState<File | null>(null);
-    const [files201, setFiles201] = useState<File[]>([]); // For multiple 201 files
+    const [files201, setFiles201] = useState<File[]>([]);
+
+    // Form state to preserve data when switching tabs
+    const [formData, setFormData] = useState<EmployeeFormData>({
+        // Personal Information
+        first_name: '',
+        middle_name: '',
+        last_name: '',
+        suffix: '',
+        email: '',
+        phone: '',
+        date_of_birth: '',
+        place_of_birth: '',
+        sex: '',
+        civil_status: '',
+        height_m: '',
+        weight_kg: '',
+        blood_type: '',
+        citizenship: '',
+        password: 'TempPassword123!',
+
+        // Government IDs
+        gsis_no: '',
+        pagibig_no: '',
+        philhealth_no: '',
+        sss_no: '',
+        tin_no: '',
+        agency_employee_no: '',
+
+        // Address Information
+        residential_address: '',
+        residential_zipcode: '',
+        residential_tel_no: '',
+        permanent_address: '',
+        permanent_zipcode: '',
+        permanent_tel_no: '',
+
+        // Family Information
+        spouse_name: '',
+        spouse_occupation: '',
+        spouse_employer: '',
+        spouse_business_address: '',
+        spouse_tel_no: '',
+        father_name: '',
+        mother_name: '',
+        parents_address: '',
+
+        // Emergency Contact
+        emergency_contact_name: '',
+        emergency_contact_number: '',
+        emergency_contact_relation: '',
+
+        // Employment Information
+        department_id: '',
+        position_id: '',
+        employment_type_id: '',
+        manager_id: '',
+        supervisor_id: '',
+        base_salary: '',
+        hire_date: '',
+        role: 'employee',
+        is_active: true,
+
+        // Educational Background
+        elementary_school_name: '',
+        elementary_degree_course: '',
+        elementary_year_graduated: '',
+        elementary_highest_level: '',
+        elementary_inclusive_dates: '',
+        elementary_honors: '',
+
+        secondary_school_name: '',
+        secondary_degree_course: '',
+        secondary_year_graduated: '',
+        secondary_highest_level: '',
+        secondary_inclusive_dates: '',
+        secondary_honors: '',
+
+        vocational_school_name: '',
+        vocational_degree_course: '',
+        vocational_year_graduated: '',
+        vocational_highest_level: '',
+        vocational_inclusive_dates: '',
+        vocational_honors: '',
+
+        college_school_name: '',
+        college_degree_course: '',
+        college_year_graduated: '',
+        college_highest_level: '',
+        college_inclusive_dates: '',
+        college_honors: '',
+
+        graduate_school_name: '',
+        graduate_degree_course: '',
+        graduate_year_graduated: '',
+        graduate_highest_level: '',
+        graduate_inclusive_dates: '',
+        graduate_honors: '',
+    });
 
     // Open edit dialog when editingEmployee changes
     useEffect(() => {
         if (editingEmployee) {
             setIsEditDialogOpen(true);
             setActiveTab("personal");
+            // Pre-fill form data when editing
+            setFormData({
+                first_name: editingEmployee.first_name || '',
+                middle_name: editingEmployee.middle_name || '',
+                last_name: editingEmployee.last_name || '',
+                suffix: editingEmployee.suffix || '',
+                email: editingEmployee.email || '',
+                phone: editingEmployee.phone || '',
+                date_of_birth: editingEmployee.date_of_birth || '',
+                place_of_birth: editingEmployee.place_of_birth || '',
+                sex: editingEmployee.sex || '',
+                civil_status: editingEmployee.civil_status || '',
+                height_m: editingEmployee.height_m || '',
+                weight_kg: editingEmployee.weight_kg || '',
+                blood_type: editingEmployee.blood_type || '',
+                citizenship: editingEmployee.citizenship || '',
+                password: '', // Don't pre-fill password for security
+
+                // Government IDs
+                gsis_no: editingEmployee.gsis_no || '',
+                pagibig_no: editingEmployee.pagibig_no || '',
+                philhealth_no: editingEmployee.philhealth_no || '',
+                sss_no: editingEmployee.sss_no || '',
+                tin_no: editingEmployee.tin_no || '',
+                agency_employee_no: editingEmployee.agency_employee_no || '',
+
+                // Address Information
+                residential_address: editingEmployee.residential_address || '',
+                residential_zipcode: editingEmployee.residential_zipcode || '',
+                residential_tel_no: editingEmployee.residential_tel_no || '',
+                permanent_address: editingEmployee.permanent_address || '',
+                permanent_zipcode: editingEmployee.permanent_zipcode || '',
+                permanent_tel_no: editingEmployee.permanent_tel_no || '',
+
+                // Family Information
+                spouse_name: editingEmployee.spouse_name || '',
+                spouse_occupation: editingEmployee.spouse_occupation || '',
+                spouse_employer: editingEmployee.spouse_employer || '',
+                spouse_business_address: editingEmployee.spouse_business_address || '',
+                spouse_tel_no: editingEmployee.spouse_tel_no || '',
+                father_name: editingEmployee.father_name || '',
+                mother_name: editingEmployee.mother_name || '',
+                parents_address: editingEmployee.parents_address || '',
+
+                // Emergency Contact
+                emergency_contact_name: editingEmployee.emergency_contact_name || '',
+                emergency_contact_number: editingEmployee.emergency_contact_number || '',
+                emergency_contact_relation: editingEmployee.emergency_contact_relation || '',
+
+                // Employment Information
+                department_id: editingEmployee.department_id?.toString() || '',
+                position_id: editingEmployee.position_id?.toString() || '',
+                employment_type_id: editingEmployee.employment_type_id?.toString() || '',
+                manager_id: editingEmployee.manager_id?.toString() || '',
+                supervisor_id: editingEmployee.supervisor_id?.toString() || '',
+                base_salary: editingEmployee.base_salary?.toString() || '',
+                hire_date: editingEmployee.hire_date || '',
+                role: editingEmployee.role || 'employee',
+                is_active: editingEmployee.is_active ?? true,
+
+                // Educational Background
+                elementary_school_name: editingEmployee.elementary_school_name || '',
+                elementary_degree_course: editingEmployee.elementary_degree_course || '',
+                elementary_year_graduated: editingEmployee.elementary_year_graduated || '',
+                elementary_highest_level: editingEmployee.elementary_highest_level || '',
+                elementary_inclusive_dates: editingEmployee.elementary_inclusive_dates || '',
+                elementary_honors: editingEmployee.elementary_honors || '',
+
+                secondary_school_name: editingEmployee.secondary_school_name || '',
+                secondary_degree_course: editingEmployee.secondary_degree_course || '',
+                secondary_year_graduated: editingEmployee.secondary_year_graduated || '',
+                secondary_highest_level: editingEmployee.secondary_highest_level || '',
+                secondary_inclusive_dates: editingEmployee.secondary_inclusive_dates || '',
+                secondary_honors: editingEmployee.secondary_honors || '',
+
+                vocational_school_name: editingEmployee.vocational_school_name || '',
+                vocational_degree_course: editingEmployee.vocational_degree_course || '',
+                vocational_year_graduated: editingEmployee.vocational_year_graduated || '',
+                vocational_highest_level: editingEmployee.vocational_highest_level || '',
+                vocational_inclusive_dates: editingEmployee.vocational_inclusive_dates || '',
+                vocational_honors: editingEmployee.vocational_honors || '',
+
+                college_school_name: editingEmployee.college_school_name || '',
+                college_degree_course: editingEmployee.college_degree_course || '',
+                college_year_graduated: editingEmployee.college_year_graduated || '',
+                college_highest_level: editingEmployee.college_highest_level || '',
+                college_inclusive_dates: editingEmployee.college_inclusive_dates || '',
+                college_honors: editingEmployee.college_honors || '',
+
+                graduate_school_name: editingEmployee.graduate_school_name || '',
+                graduate_degree_course: editingEmployee.graduate_degree_course || '',
+                graduate_year_graduated: editingEmployee.graduate_year_graduated || '',
+                graduate_highest_level: editingEmployee.graduate_highest_level || '',
+                graduate_inclusive_dates: editingEmployee.graduate_inclusive_dates || '',
+                graduate_honors: editingEmployee.graduate_honors || '',
+            });
         }
     }, [editingEmployee]);
 
     const resetForm = () => {
+        setFormData({
+            first_name: '',
+            middle_name: '',
+            last_name: '',
+            suffix: '',
+            email: '',
+            phone: '',
+            date_of_birth: '',
+            place_of_birth: '',
+            sex: '',
+            civil_status: '',
+            height_m: '',
+            weight_kg: '',
+            blood_type: '',
+            citizenship: '',
+            password: 'TempPassword123!',
+            gsis_no: '',
+            pagibig_no: '',
+            philhealth_no: '',
+            sss_no: '',
+            tin_no: '',
+            agency_employee_no: '',
+            residential_address: '',
+            residential_zipcode: '',
+            residential_tel_no: '',
+            permanent_address: '',
+            permanent_zipcode: '',
+            permanent_tel_no: '',
+            spouse_name: '',
+            spouse_occupation: '',
+            spouse_employer: '',
+            spouse_business_address: '',
+            spouse_tel_no: '',
+            father_name: '',
+            mother_name: '',
+            parents_address: '',
+            emergency_contact_name: '',
+            emergency_contact_number: '',
+            emergency_contact_relation: '',
+            department_id: '',
+            position_id: '',
+            employment_type_id: '',
+            manager_id: '',
+            supervisor_id: '',
+            base_salary: '',
+            hire_date: '',
+            role: 'employee',
+            is_active: true,
+            elementary_school_name: '',
+            elementary_degree_course: '',
+            elementary_year_graduated: '',
+            elementary_highest_level: '',
+            elementary_inclusive_dates: '',
+            elementary_honors: '',
+            secondary_school_name: '',
+            secondary_degree_course: '',
+            secondary_year_graduated: '',
+            secondary_highest_level: '',
+            secondary_inclusive_dates: '',
+            secondary_honors: '',
+            vocational_school_name: '',
+            vocational_degree_course: '',
+            vocational_year_graduated: '',
+            vocational_highest_level: '',
+            vocational_inclusive_dates: '',
+            vocational_honors: '',
+            college_school_name: '',
+            college_degree_course: '',
+            college_year_graduated: '',
+            college_highest_level: '',
+            college_inclusive_dates: '',
+            college_honors: '',
+            graduate_school_name: '',
+            graduate_degree_course: '',
+            graduate_year_graduated: '',
+            graduate_highest_level: '',
+            graduate_inclusive_dates: '',
+            graduate_honors: '',
+        });
         setResumeFile(null);
         setFiles201([]);
         setError(null);
         setActiveTab("personal");
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value, type } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+        }));
+    };
+
+    const handleSelectChange = (name: string, value: string) => {
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSwitchChange = (name: string, checked: boolean) => {
+        setFormData(prev => ({
+            ...prev,
+            [name]: checked
+        }));
     };
 
     const handleAddEmployee = async (event: React.FormEvent) => {
@@ -61,120 +358,24 @@ const EmployeeDialog = ({
         setLoading(true);
         setError(null);
 
-        const formData = new FormData(event.target as HTMLFormElement);
-
         try {
             const submitData = new FormData();
 
-            // 🔹 Basic Info
-            submitData.append('first_name', formData.get('first_name') as string);
-            submitData.append('middle_name', formData.get('middle_name') as string || '');
-            submitData.append('last_name', formData.get('last_name') as string);
-            submitData.append('suffix', formData.get('suffix') as string || '');
-            submitData.append('email', formData.get('email') as string);
-            submitData.append('phone', formData.get('phone') as string || '');
-            submitData.append('date_of_birth', formData.get('date_of_birth') as string || '');
-            submitData.append('place_of_birth', formData.get('place_of_birth') as string || '');
-            submitData.append('sex', formData.get('sex') as string || '');
-            submitData.append('civil_status', formData.get('civil_status') as string || '');
-            submitData.append('height_m', formData.get('height_m') as string || '');
-            submitData.append('weight_kg', formData.get('weight_kg') as string || '');
-            submitData.append('blood_type', formData.get('blood_type') as string || '');
-            submitData.append('citizenship', formData.get('citizenship') as string || '');
+            // Append all form data
+            Object.entries(formData).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    submitData.append(key, value.toString());
+                }
+            });
 
-            // 🔹 Password (required by backend)
-            submitData.append('password', formData.get('password') as string || 'TempPassword123!');
-
-            // 🔹 Government IDs
-            submitData.append('gsis_no', formData.get('gsis_no') as string || '');
-            submitData.append('pagibig_no', formData.get('pagibig_no') as string || '');
-            submitData.append('philhealth_no', formData.get('philhealth_no') as string || '');
-            submitData.append('sss_no', formData.get('sss_no') as string || '');
-            submitData.append('tin_no', formData.get('tin_no') as string || '');
-            submitData.append('agency_employee_no', formData.get('agency_employee_no') as string || '');
-
-            // 🔹 Address Information
-            submitData.append('residential_address', formData.get('residential_address') as string || '');
-            submitData.append('residential_zipcode', formData.get('residential_zipcode') as string || '');
-            submitData.append('residential_tel_no', formData.get('residential_tel_no') as string || '');
-            submitData.append('permanent_address', formData.get('permanent_address') as string || '');
-            submitData.append('permanent_zipcode', formData.get('permanent_zipcode') as string || '');
-            submitData.append('permanent_tel_no', formData.get('permanent_tel_no') as string || '');
-
-            // 🔹 Family Information
-            submitData.append('spouse_name', formData.get('spouse_name') as string || '');
-            submitData.append('spouse_occupation', formData.get('spouse_occupation') as string || '');
-            submitData.append('spouse_employer', formData.get('spouse_employer') as string || '');
-            submitData.append('spouse_business_address', formData.get('spouse_business_address') as string || '');
-            submitData.append('spouse_tel_no', formData.get('spouse_tel_no') as string || '');
-            submitData.append('father_name', formData.get('father_name') as string || '');
-            submitData.append('mother_name', formData.get('mother_name') as string || '');
-            submitData.append('parents_address', formData.get('parents_address') as string || '');
-
-            // 🔹 Emergency Contact
-            submitData.append('emergency_contact_name', formData.get('emergency_contact_name') as string || '');
-            submitData.append('emergency_contact_number', formData.get('emergency_contact_number') as string || '');
-            submitData.append('emergency_contact_relation', formData.get('emergency_contact_relation') as string || '');
-
-            // 🔹 Employment Information
-            submitData.append('department_id', formData.get('department_id') as string || '');
-            submitData.append('position_id', formData.get('position_id') as string || '');
-            submitData.append('employment_type_id', formData.get('employment_type_id') as string || '');
-            submitData.append('manager_id', formData.get('manager_id') as string || '');
-            submitData.append('supervisor_id', formData.get('supervisor_id') as string || '');
-            submitData.append('base_salary', formData.get('base_salary') as string);
-            submitData.append('hire_date', formData.get('hire_date') as string);
-            submitData.append('role', formData.get('role') as string || 'employee');
-            submitData.append('is_active', formData.get('is_active') ? 'true' : 'false');
-
-            // 🔹 Educational Background - Elementary
-            submitData.append('elementary_school_name', formData.get('elementary_school_name') as string || '');
-            submitData.append('elementary_degree_course', formData.get('elementary_degree_course') as string || '');
-            submitData.append('elementary_year_graduated', formData.get('elementary_year_graduated') as string || '');
-            submitData.append('elementary_highest_level', formData.get('elementary_highest_level') as string || '');
-            submitData.append('elementary_inclusive_dates', formData.get('elementary_inclusive_dates') as string || '');
-            submitData.append('elementary_honors', formData.get('elementary_honors') as string || '');
-
-            // 🔹 Educational Background - Secondary
-            submitData.append('secondary_school_name', formData.get('secondary_school_name') as string || '');
-            submitData.append('secondary_degree_course', formData.get('secondary_degree_course') as string || '');
-            submitData.append('secondary_year_graduated', formData.get('secondary_year_graduated') as string || '');
-            submitData.append('secondary_highest_level', formData.get('secondary_highest_level') as string || '');
-            submitData.append('secondary_inclusive_dates', formData.get('secondary_inclusive_dates') as string || '');
-            submitData.append('secondary_honors', formData.get('secondary_honors') as string || '');
-
-            // 🔹 Educational Background - Vocational
-            submitData.append('vocational_school_name', formData.get('vocational_school_name') as string || '');
-            submitData.append('vocational_degree_course', formData.get('vocational_degree_course') as string || '');
-            submitData.append('vocational_year_graduated', formData.get('vocational_year_graduated') as string || '');
-            submitData.append('vocational_highest_level', formData.get('vocational_highest_level') as string || '');
-            submitData.append('vocational_inclusive_dates', formData.get('vocational_inclusive_dates') as string || '');
-            submitData.append('vocational_honors', formData.get('vocational_honors') as string || '');
-
-            // 🔹 Educational Background - College
-            submitData.append('college_school_name', formData.get('college_school_name') as string || '');
-            submitData.append('college_degree_course', formData.get('college_degree_course') as string || '');
-            submitData.append('college_year_graduated', formData.get('college_year_graduated') as string || '');
-            submitData.append('college_highest_level', formData.get('college_highest_level') as string || '');
-            submitData.append('college_inclusive_dates', formData.get('college_inclusive_dates') as string || '');
-            submitData.append('college_honors', formData.get('college_honors') as string || '');
-
-            // 🔹 Educational Background - Graduate
-            submitData.append('graduate_school_name', formData.get('graduate_school_name') as string || '');
-            submitData.append('graduate_degree_course', formData.get('graduate_degree_course') as string || '');
-            submitData.append('graduate_year_graduated', formData.get('graduate_year_graduated') as string || '');
-            submitData.append('graduate_highest_level', formData.get('graduate_highest_level') as string || '');
-            submitData.append('graduate_inclusive_dates', formData.get('graduate_inclusive_dates') as string || '');
-            submitData.append('graduate_honors', formData.get('graduate_honors') as string || '');
-
-            // 🔹 Files
+            // Files
             if (resumeFile) {
                 submitData.append('resume', resumeFile);
             }
 
             // Append multiple 201 files
             files201.forEach(file => {
-                submitData.append('201_file[]', file); // Backend expects array
+                submitData.append('201_file[]', file);
             });
 
             const response = await api.post('/create/employees', submitData, {
@@ -187,7 +388,6 @@ const EmployeeDialog = ({
                 onEmployeeAdded();
                 setIsAddDialogOpen(false);
                 resetForm();
-                (event.target as HTMLFormElement).reset();
             } else {
                 throw new Error(response.data.message);
             }
@@ -205,36 +405,19 @@ const EmployeeDialog = ({
         setLoading(true);
         setError(null);
 
-        const formData = new FormData(event.target as HTMLFormElement);
-
         try {
             const submitData = new FormData();
 
-            // Personal Information
-            submitData.append('first_name', formData.get('first_name') as string);
-            submitData.append('middle_name', formData.get('middle_name') as string || '');
-            submitData.append('last_name', formData.get('last_name') as string);
-            submitData.append('suffix', formData.get('suffix') as string || '');
-            submitData.append('email', formData.get('email') as string);
-            submitData.append('phone', formData.get('phone') as string || '');
-            submitData.append('date_of_birth', formData.get('date_of_birth') as string || '');
-            submitData.append('place_of_birth', formData.get('place_of_birth') as string || '');
-            submitData.append('sex', formData.get('sex') as string || '');
-            submitData.append('civil_status', formData.get('civil_status') as string || '');
-            submitData.append('height_m', formData.get('height_m') as string || '');
-            submitData.append('weight_kg', formData.get('weight_kg') as string || '');
-            submitData.append('blood_type', formData.get('blood_type') as string || '');
-            submitData.append('citizenship', formData.get('citizenship') as string || '');
-
-            // Employment Information
-            submitData.append('department_id', formData.get('department_id') as string || '');
-            submitData.append('position_id', formData.get('position_id') as string || '');
-            submitData.append('employment_type_id', formData.get('employment_type_id') as string || '');
-            submitData.append('manager_id', formData.get('manager_id') as string || '');
-            submitData.append('supervisor_id', formData.get('supervisor_id') as string || '');
-            submitData.append('base_salary', formData.get('base_salary') as string);
-            submitData.append('hire_date', formData.get('hire_date') as string);
-            submitData.append('is_active', formData.get('is_active') ? 'true' : 'false');
+            // Append all form data except password if empty
+            Object.entries(formData).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    // Don't send password if it's empty (for edit)
+                    if (key === 'password' && value === '') {
+                        return;
+                    }
+                    submitData.append(key, value.toString());
+                }
+            });
 
             // Files - append multiple 201 files
             files201.forEach(file => {
@@ -245,8 +428,7 @@ const EmployeeDialog = ({
                 submitData.append('resume', resumeFile);
             }
 
-            // Use PUT or PATCH depending on your API
-            const response = await api.post(`/employees/${editingEmployee.id}`, submitData, {
+            const response = await api.post(`/update/employees/${editingEmployee.id}`, submitData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -312,7 +494,6 @@ const EmployeeDialog = ({
         if (type === 'resume') {
             setResumeFile(files[0]);
         } else {
-            // For 201 files, handle multiple files
             const newFiles = Array.from(files);
             setFiles201(prev => [...prev, ...newFiles]);
         }
@@ -336,18 +517,22 @@ const EmployeeDialog = ({
 
     const renderFormField = (
         label: string,
-        name: string,
+        name: keyof EmployeeFormData,
         type: string = "text",
         placeholder: string = "",
         required: boolean = false,
-        defaultValue: any = "",
         options?: { value: string; label: string }[]
     ) => {
+        const value = formData[name] as string;
+
         if (type === "select" && options) {
             return (
                 <div className="space-y-2">
                     <Label htmlFor={name}>{label}{required && " *"}</Label>
-                    <Select name={name} required={required} defaultValue={defaultValue?.toString()}>
+                    <Select
+                        value={value}
+                        onValueChange={(value) => handleSelectChange(name, value)}
+                    >
                         <SelectTrigger>
                             <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
                         </SelectTrigger>
@@ -368,10 +553,12 @@ const EmployeeDialog = ({
                 <div className="space-y-2">
                     <Label htmlFor={name}>{label}{required && " *"}</Label>
                     <Textarea
+                        id={name}
                         name={name}
                         placeholder={placeholder}
                         required={required}
-                        defaultValue={defaultValue}
+                        value={value}
+                        onChange={handleInputChange}
                     />
                 </div>
             );
@@ -381,8 +568,8 @@ const EmployeeDialog = ({
             return (
                 <div className="flex items-center space-x-2">
                     <Switch
-                        name={name}
-                        defaultChecked={defaultValue}
+                        checked={formData[name] as boolean}
+                        onCheckedChange={(checked) => handleSwitchChange(name, checked)}
                     />
                     <Label htmlFor={name}>{label}</Label>
                 </div>
@@ -393,176 +580,177 @@ const EmployeeDialog = ({
             <div className="space-y-2">
                 <Label htmlFor={name}>{label}{required && " *"}</Label>
                 <Input
+                    id={name}
                     name={name}
                     type={type}
                     placeholder={placeholder}
                     required={required}
-                    defaultValue={defaultValue}
+                    value={value}
+                    onChange={handleInputChange}
                 />
             </div>
         );
     };
 
-    const personalInfoFields = (employee?: Employee | null) => (
+    const personalInfoFields = () => (
         <div className="grid grid-cols-2 gap-4">
-            {renderFormField("First Name", "first_name", "text", "John", true, employee?.first_name)}
-            {renderFormField("Middle Name", "middle_name", "text", "Middle", false, employee?.middle_name)}
-            {renderFormField("Last Name", "last_name", "text", "Doe", true, employee?.last_name)}
-            {renderFormField("Suffix", "suffix", "text", "Jr., Sr., III", false, employee?.suffix)}
-            {renderFormField("Email", "email", "email", "john.doe@company.com", true, employee?.email)}
-            {renderFormField("Phone", "phone", "tel", "+1-555-0101", false, employee?.phone)}
-            {renderFormField("Password", "password", "password", "********", !employee, "")}
-            {renderFormField("Date of Birth", "date_of_birth", "date", "", false, employee?.date_of_birth)}
-            {renderFormField("Place of Birth", "place_of_birth", "text", "City, Country", false, employee?.place_of_birth)}
-            {renderFormField("Sex", "sex", "select", "", false, employee?.sex, [
+            {renderFormField("First Name", "first_name", "text", "John", true)}
+            {renderFormField("Middle Name", "middle_name", "text", "Middle", false)}
+            {renderFormField("Last Name", "last_name", "text", "Doe", true)}
+            {renderFormField("Suffix", "suffix", "text", "Jr., Sr., III", false)}
+            {renderFormField("Email", "email", "email", "john.doe@company.com", true)}
+            {renderFormField("Phone", "phone", "tel", "+1-555-0101", false)}
+            {renderFormField("Password", "password", "password", " ", !editingEmployee)}
+            {renderFormField("Date of Birth", "date_of_birth", "date", "", false)}
+            {renderFormField("Place of Birth", "place_of_birth", "text", "City, Country", false)}
+            {renderFormField("Sex", "sex", "select", "", false, [
                 { value: "Male", label: "Male" },
                 { value: "Female", label: "Female" },
                 { value: "Other", label: "Other" }
             ])}
-            {renderFormField("Civil Status", "civil_status", "select", "", false, employee?.civil_status, [
+            {renderFormField("Civil Status", "civil_status", "select", "", false, [
                 { value: "single", label: "Single" },
                 { value: "married", label: "Married" },
                 { value: "divorced", label: "Divorced" },
                 { value: "widowed", label: "Widowed" }
             ])}
-            {renderFormField("Height (m)", "height_m", "number", "1.75", false, employee?.height_m)}
-            {renderFormField("Weight (kg)", "weight_kg", "number", "70", false, employee?.weight_kg)}
-            {renderFormField("Blood Type", "blood_type", "text", "O+", false, employee?.blood_type)}
-            {renderFormField("Citizenship", "citizenship", "text", "Filipino", false, employee?.citizenship)}
+            {renderFormField("Height (m)", "height_m", "number", "1.75", false)}
+            {renderFormField("Weight (kg)", "weight_kg", "number", "70", false)}
+            {renderFormField("Blood Type", "blood_type", "text", "O+", false)}
+            {renderFormField("Citizenship", "citizenship", "text", "Filipino", false)}
         </div>
     );
 
-    const educationInfoFields = (employee?: Employee | null) => (
+    const educationInfoFields = () => (
         <div className="space-y-6">
             <div className="space-y-4">
                 <h4 className="font-semibold">Elementary</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    {renderFormField("School Name", "elementary_school_name", "text", "", false, employee?.elementary_school_name)}
-                    {renderFormField("Degree/Course", "elementary_degree_course", "text", "", false, employee?.elementary_degree_course)}
-                    {renderFormField("Year Graduated", "elementary_year_graduated", "text", "", false, employee?.elementary_year_graduated)}
-                    {renderFormField("Highest Level", "elementary_highest_level", "text", "", false, employee?.elementary_highest_level)}
-                    {renderFormField("Inclusive Dates", "elementary_inclusive_dates", "text", "", false, employee?.elementary_inclusive_dates)}
-                    {renderFormField("Honors", "elementary_honors", "text", "", false, employee?.elementary_honors)}
+                    {renderFormField("School Name", "elementary_school_name", "text", "", false)}
+                    {renderFormField("Degree/Course", "elementary_degree_course", "text", "", false)}
+                    {renderFormField("Year Graduated", "elementary_year_graduated", "text", "", false)}
+                    {renderFormField("Highest Level", "elementary_highest_level", "text", "", false)}
+                    {renderFormField("Inclusive Dates", "elementary_inclusive_dates", "text", "", false)}
+                    {renderFormField("Honors", "elementary_honors", "text", "", false)}
                 </div>
             </div>
 
             <div className="space-y-4">
                 <h4 className="font-semibold">Secondary</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    {renderFormField("School Name", "secondary_school_name", "text", "", false, employee?.secondary_school_name)}
-                    {renderFormField("Degree/Course", "secondary_degree_course", "text", "", false, employee?.secondary_degree_course)}
-                    {renderFormField("Year Graduated", "secondary_year_graduated", "text", "", false, employee?.secondary_year_graduated)}
-                    {renderFormField("Highest Level", "secondary_highest_level", "text", "", false, employee?.secondary_highest_level)}
-                    {renderFormField("Inclusive Dates", "secondary_inclusive_dates", "text", "", false, employee?.secondary_inclusive_dates)}
-                    {renderFormField("Honors", "secondary_honors", "text", "", false, employee?.secondary_honors)}
+                    {renderFormField("School Name", "secondary_school_name", "text", "", false)}
+                    {renderFormField("Degree/Course", "secondary_degree_course", "text", "", false)}
+                    {renderFormField("Year Graduated", "secondary_year_graduated", "text", "", false)}
+                    {renderFormField("Highest Level", "secondary_highest_level", "text", "", false)}
+                    {renderFormField("Inclusive Dates", "secondary_inclusive_dates", "text", "", false)}
+                    {renderFormField("Honors", "secondary_honors", "text", "", false)}
                 </div>
             </div>
 
             <div className="space-y-4">
                 <h4 className="font-semibold">Vocational</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    {renderFormField("School Name", "vocational_school_name", "text", "", false, employee?.vocational_school_name)}
-                    {renderFormField("Degree/Course", "vocational_degree_course", "text", "", false, employee?.vocational_degree_course)}
-                    {renderFormField("Year Graduated", "vocational_year_graduated", "text", "", false, employee?.vocational_year_graduated)}
-                    {renderFormField("Highest Level", "vocational_highest_level", "text", "", false, employee?.vocational_highest_level)}
-                    {renderFormField("Inclusive Dates", "vocational_inclusive_dates", "text", "", false, employee?.vocational_inclusive_dates)}
-                    {renderFormField("Honors", "vocational_honors", "text", "", false, employee?.vocational_honors)}
+                    {renderFormField("School Name", "vocational_school_name", "text", "", false)}
+                    {renderFormField("Degree/Course", "vocational_degree_course", "text", "", false)}
+                    {renderFormField("Year Graduated", "vocational_year_graduated", "text", "", false)}
+                    {renderFormField("Highest Level", "vocational_highest_level", "text", "", false)}
+                    {renderFormField("Inclusive Dates", "vocational_inclusive_dates", "text", "", false)}
+                    {renderFormField("Honors", "vocational_honors", "text", "", false)}
                 </div>
             </div>
 
             <div className="space-y-4">
                 <h4 className="font-semibold">College</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    {renderFormField("School Name", "college_school_name", "text", "", false, employee?.college_school_name)}
-                    {renderFormField("Degree/Course", "college_degree_course", "text", "", false, employee?.college_degree_course)}
-                    {renderFormField("Year Graduated", "college_year_graduated", "text", "", false, employee?.college_year_graduated)}
-                    {renderFormField("Highest Level", "college_highest_level", "text", "", false, employee?.college_highest_level)}
-                    {renderFormField("Inclusive Dates", "college_inclusive_dates", "text", "", false, employee?.college_inclusive_dates)}
-                    {renderFormField("Honors", "college_honors", "text", "", false, employee?.college_honors)}
+                    {renderFormField("School Name", "college_school_name", "text", "", false)}
+                    {renderFormField("Degree/Course", "college_degree_course", "text", "", false)}
+                    {renderFormField("Year Graduated", "college_year_graduated", "text", "", false)}
+                    {renderFormField("Highest Level", "college_highest_level", "text", "", false)}
+                    {renderFormField("Inclusive Dates", "college_inclusive_dates", "text", "", false)}
+                    {renderFormField("Honors", "college_honors", "text", "", false)}
                 </div>
             </div>
 
             <div className="space-y-4">
                 <h4 className="font-semibold">Graduate</h4>
                 <div className="grid grid-cols-2 gap-4">
-                    {renderFormField("School Name", "graduate_school_name", "text", "", false, employee?.graduate_school_name)}
-                    {renderFormField("Degree/Course", "graduate_degree_course", "text", "", false, employee?.graduate_degree_course)}
-                    {renderFormField("Year Graduated", "graduate_year_graduated", "text", "", false, employee?.graduate_year_graduated)}
-                    {renderFormField("Highest Level", "graduate_highest_level", "text", "", false, employee?.graduate_highest_level)}
-                    {renderFormField("Inclusive Dates", "graduate_inclusive_dates", "text", "", false, employee?.graduate_inclusive_dates)}
-                    {renderFormField("Honors", "graduate_honors", "text", "", false, employee?.graduate_honors)}
+                    {renderFormField("School Name", "graduate_school_name", "text", "", false)}
+                    {renderFormField("Degree/Course", "graduate_degree_course", "text", "", false)}
+                    {renderFormField("Year Graduated", "graduate_year_graduated", "text", "", false)}
+                    {renderFormField("Highest Level", "graduate_highest_level", "text", "", false)}
+                    {renderFormField("Inclusive Dates", "graduate_inclusive_dates", "text", "", false)}
+                    {renderFormField("Honors", "graduate_honors", "text", "", false)}
                 </div>
             </div>
         </div>
     );
 
-    const employmentInfoFields = (employee?: Employee | null) => (
+    const employmentInfoFields = () => (
         <div className="grid grid-cols-2 gap-4">
-            {renderFormField("Department", "department_id", "select", "", true, employee?.department_id,
+            {renderFormField("Department", "department_id", "select", "", true,
                 departments.map(dept => ({ value: dept.id.toString(), label: dept.department_name }))
             )}
-            {renderFormField("Position", "position_id", "select", "", true, employee?.position_id,
+            {renderFormField("Position", "position_id", "select", "", true,
                 positions.map(pos => ({ value: pos.id.toString(), label: pos.position_name }))
             )}
-
-            {renderFormField("Manager", "manager_id", "select", "", false, employee?.manager_id,
+            {renderFormField("Manager", "manager_id", "select", "", false,
                 managers.map(manager => ({
                     value: manager.id.toString(),
                     label: `${manager.first_name} ${manager.last_name}`
                 }))
             )}
-            {renderFormField("Supervisor", "supervisor_id", "select", "", false, employee?.supervisor_id,
+            {renderFormField("Supervisor", "supervisor_id", "select", "", false,
                 managers.map(supervisor => ({
                     value: supervisor.id.toString(),
                     label: `${supervisor.first_name} ${supervisor.last_name}`
                 }))
             )}
-            {renderFormField("Base Salary", "base_salary", "number", "50000", true, employee?.base_salary)}
-            {renderFormField("Hire Date", "hire_date", "date", "", true, employee?.hire_date)}
-            {renderFormField("Role", "role", "select", "", false, employee?.role || "employee", [
+            {renderFormField("Base Salary", "base_salary", "number", "50000", true)}
+            {renderFormField("Hire Date", "hire_date", "date", "", true)}
+            {renderFormField("Role", "role", "select", "", false, [
                 { value: "employee", label: "Employee" },
                 { value: "manager", label: "Manager" },
                 { value: "admin", label: "Admin" }
             ])}
-            {renderFormField("Active Status", "is_active", "switch", "", false, employee?.is_active ?? true)}
+            {renderFormField("Active Status", "is_active", "switch", "", false)}
         </div>
     );
 
-    const governmentIdsFields = (employee?: Employee | null) => (
+    const governmentIdsFields = () => (
         <div className="grid grid-cols-2 gap-4">
-            {renderFormField("GSIS No.", "gsis_no", "text", "123456789", false, employee?.gsis_no)}
-            {renderFormField("PAG-IBIG No.", "pagibig_no", "text", "123456789012", false, employee?.pagibig_no)}
-            {renderFormField("PhilHealth No.", "philhealth_no", "text", "123456789012", false, employee?.philhealth_no)}
-            {renderFormField("SSS No.", "sss_no", "text", "123456789", false, employee?.sss_no)}
-            {renderFormField("TIN No.", "tin_no", "text", "123-456-789-000", false, employee?.tin_no)}
-            {renderFormField("Agency Employee No.", "agency_employee_no", "text", "EMP-001", false, employee?.agency_employee_no)}
+            {renderFormField("GSIS No.", "gsis_no", "text", "123456789", false)}
+            {renderFormField("PAG-IBIG No.", "pagibig_no", "text", "123456789012", false)}
+            {renderFormField("PhilHealth No.", "philhealth_no", "text", "123456789012", false)}
+            {renderFormField("SSS No.", "sss_no", "text", "123456789", false)}
+            {renderFormField("TIN No.", "tin_no", "text", "123-456-789-000", false)}
+            {renderFormField("Agency Employee No.", "agency_employee_no", "text", "EMP-001", false)}
         </div>
     );
 
-    const addressInfoFields = (employee?: Employee | null) => (
+    const addressInfoFields = () => (
         <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-4">
                     <h4 className="font-semibold">Residential Address</h4>
-                    {renderFormField("Address", "residential_address", "textarea", "Street, Barangay, City", false, employee?.residential_address)}
-                    {renderFormField("Zip Code", "residential_zipcode", "text", "1000", false, employee?.residential_zipcode)}
-                    {renderFormField("Telephone No.", "residential_tel_no", "tel", "+632-123-4567", false, employee?.residential_tel_no)}
+                    {renderFormField("Address", "residential_address", "textarea", "Street, Barangay, City", false)}
+                    {renderFormField("Zip Code", "residential_zipcode", "text", "1000", false)}
+                    {renderFormField("Telephone No.", "residential_tel_no", "tel", "+632-123-4567", false)}
                 </div>
                 <div className="space-y-4">
                     <h4 className="font-semibold">Permanent Address</h4>
-                    {renderFormField("Address", "permanent_address", "textarea", "Street, Barangay, City", false, employee?.permanent_address)}
-                    {renderFormField("Zip Code", "permanent_zipcode", "text", "1000", false, employee?.permanent_zipcode)}
-                    {renderFormField("Telephone No.", "permanent_tel_no", "tel", "+632-123-4567", false, employee?.permanent_tel_no)}
+                    {renderFormField("Address", "permanent_address", "textarea", "Street, Barangay, City", false)}
+                    {renderFormField("Zip Code", "permanent_zipcode", "text", "1000", false)}
+                    {renderFormField("Telephone No.", "permanent_tel_no", "tel", "+632-123-4567", false)}
                 </div>
             </div>
         </div>
     );
 
-    const emergencyContactFields = (employee?: Employee | null) => (
+    const emergencyContactFields = () => (
         <div className="grid grid-cols-2 gap-4">
-            {renderFormField("Emergency Contact Name", "emergency_contact_name", "text", "Juan Dela Cruz", false, employee?.emergency_contact_name)}
-            {renderFormField("Emergency Contact Number", "emergency_contact_number", "tel", "+63-912-345-6789", false, employee?.emergency_contact_number)}
-            {renderFormField("Emergency Contact Relation", "emergency_contact_relation", "text", "Father, Mother, Spouse", false, employee?.emergency_contact_relation)}
+            {renderFormField("Emergency Contact Name", "emergency_contact_name", "text", "Juan Dela Cruz", false)}
+            {renderFormField("Emergency Contact Number", "emergency_contact_number", "tel", "+63-912-345-6789", false)}
+            {renderFormField("Emergency Contact Relation", "emergency_contact_relation", "text", "Father, Mother, Spouse", false)}
         </div>
     );
 
@@ -742,17 +930,17 @@ const EmployeeDialog = ({
 
                             <form onSubmit={handleEditEmployee}>
                                 <TabsContent value="personal" className="space-y-4">
-                                    {personalInfoFields(editingEmployee)}
-                                    {governmentIdsFields(editingEmployee)}
+                                    {personalInfoFields()}
+                                    {governmentIdsFields()}
                                 </TabsContent>
 
                                 <TabsContent value="employment" className="space-y-4">
-                                    {employmentInfoFields(editingEmployee)}
-                                    {emergencyContactFields(editingEmployee)}
+                                    {employmentInfoFields()}
+                                    {emergencyContactFields()}
                                 </TabsContent>
 
                                 <TabsContent value="education" className="space-y-4">
-                                    {educationInfoFields(editingEmployee)}
+                                    {educationInfoFields()}
                                 </TabsContent>
 
                                 <TabsContent value="files" className="space-y-4">

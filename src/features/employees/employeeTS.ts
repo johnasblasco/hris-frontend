@@ -210,21 +210,101 @@ export interface Employee extends
 }
 
 // Employee Form Data (for create/update operations)
-export interface EmployeeFormData extends Partial<
-    Omit<Employee,
-        'id' |
-        'created_at' |
-        'updated_at' |
-        'department' |
-        'position' |
-        'manager' |
-        'supervisor'
-    >
-> {
-    department_id?: number;
-    position_id?: number;
-    manager_id?: number | null;
-    supervisor_id?: number | null;
+export interface EmployeeFormData {
+    // Personal Information
+    first_name: string;
+    middle_name: string;
+    last_name: string;
+    suffix: string;
+    email: string;
+    phone: string;
+    date_of_birth: string;
+    place_of_birth: string;
+    sex: string;
+    civil_status: string;
+    height_m: any;
+    weight_kg: any;
+    blood_type: string;
+    citizenship: string;
+    password: string;
+
+    // Government IDs
+    gsis_no: string;
+    pagibig_no: string;
+    philhealth_no: string;
+    sss_no: string;
+    tin_no: string;
+    agency_employee_no: string;
+
+    // Address Information
+    residential_address: string;
+    residential_zipcode: string;
+    residential_tel_no: string;
+    permanent_address: string;
+    permanent_zipcode: string;
+    permanent_tel_no: string;
+
+    // Family Information
+    spouse_name: string;
+    spouse_occupation: string;
+    spouse_employer: string;
+    spouse_business_address: string;
+    spouse_tel_no: string;
+    father_name: string;
+    mother_name: string;
+    parents_address: string;
+
+    // Emergency Contact
+    emergency_contact_name: string;
+    emergency_contact_number: string;
+    emergency_contact_relation: string;
+
+    // Employment Information
+    department_id: string;
+    position_id: string;
+    employment_type_id: string;
+    manager_id: string;
+    supervisor_id: string;
+    base_salary: string;
+    hire_date: string;
+    role: string;
+    is_active: boolean;
+
+    // Educational Background
+    elementary_school_name: string;
+    elementary_degree_course: string;
+    elementary_year_graduated: string;
+    elementary_highest_level: string;
+    elementary_inclusive_dates: string;
+    elementary_honors: string;
+
+    secondary_school_name: string;
+    secondary_degree_course: string;
+    secondary_year_graduated: string;
+    secondary_highest_level: string;
+    secondary_inclusive_dates: string;
+    secondary_honors: string;
+
+    vocational_school_name: string;
+    vocational_degree_course: string;
+    vocational_year_graduated: string;
+    vocational_highest_level: string;
+    vocational_inclusive_dates: string;
+    vocational_honors: string;
+
+    college_school_name: string;
+    college_degree_course: string;
+    college_year_graduated: string;
+    college_highest_level: string;
+    college_inclusive_dates: string;
+    college_honors: string;
+
+    graduate_school_name: string;
+    graduate_degree_course: string;
+    graduate_year_graduated: string;
+    graduate_highest_level: string;
+    graduate_inclusive_dates: string;
+    graduate_honors: string;
 }
 
 // Employee Filters

@@ -56,6 +56,23 @@ const Employees = () => {
         }
     };
 
+    // Fetch employee details for view dialog
+    const fetchEmployeeDetails = async (employeeId: number) => {
+        try {
+            const response = await api.get(`/employees/${employeeId}`);
+            const result = response.data;
+
+            if (result.isSuccess) {
+                return result.employee;
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to fetch employee details');
+            return null;
+        }
+    };
+
     // Fetch dropdown data
     const fetchDropdownData = async () => {
         try {
@@ -85,6 +102,17 @@ const Employees = () => {
         fetchEmployees();
         fetchDropdownData();
     }, []);
+
+    const handleViewEmployee = async (employee: Employee) => {
+        setSelectedEmployee(employee);
+        setIsViewDialogOpen(true);
+
+        // Fetch detailed employee data including files
+        const detailedEmployee = await fetchEmployeeDetails(employee.id);
+        if (detailedEmployee) {
+            setSelectedEmployee(detailedEmployee);
+        }
+    };
 
     const filteredEmployees = employees.filter(emp =>
         emp.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -144,9 +172,15 @@ const Employees = () => {
         return value ? value : fallback;
     };
 
-    const downloadResume = (resumeUrl: string) => {
-        if (resumeUrl) {
-            window.open(resumeUrl, '_blank');
+    const downloadFile = (fileUrl: string, fileName: string) => {
+        if (fileUrl) {
+            const link = document.createElement('a');
+            link.href = fileUrl;
+            link.download = fileName;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     };
 
@@ -350,10 +384,7 @@ const Employees = () => {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => {
-                                                            setSelectedEmployee(employee);
-                                                            setIsViewDialogOpen(true);
-                                                        }}
+                                                        onClick={() => handleViewEmployee(employee)}
                                                     >
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
@@ -418,7 +449,7 @@ const Employees = () => {
 
             {/* Employee Details Dialog */}
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Employee Details</DialogTitle>
                         <DialogDescription>
@@ -427,11 +458,12 @@ const Employees = () => {
                     </DialogHeader>
                     {selectedEmployee && (
                         <Tabs defaultValue="personal" className="w-full">
-                            <TabsList className="grid w-full grid-cols-4">
+                            <TabsList className="grid w-full grid-cols-5">
                                 <TabsTrigger value="personal">Personal</TabsTrigger>
                                 <TabsTrigger value="employment">Employment</TabsTrigger>
                                 <TabsTrigger value="education">Education</TabsTrigger>
                                 <TabsTrigger value="contacts">Contacts</TabsTrigger>
+                                <TabsTrigger value="files">Files</TabsTrigger>
                             </TabsList>
 
                             {/* Personal Information Tab */}
@@ -614,36 +646,6 @@ const Employees = () => {
                                                 <p className="text-sm mt-1">{formatDateTime(selectedEmployee.updated_at)}</p>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-
-                                {/* Documents */}
-                                <div className="space-y-4">
-                                    <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                                        Documents
-                                    </h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {selectedEmployee.resume && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => downloadResume(selectedEmployee.resume!)}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <FileText className="h-4 w-4" />
-                                                View Resume
-                                            </Button>
-                                        )}
-                                        {selectedEmployee["201_file"] && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex items-center gap-2"
-                                            >
-                                                <FileText className="h-4 w-4" />
-                                                201 File
-                                            </Button>
-                                        )}
                                     </div>
                                 </div>
                             </TabsContent>
@@ -851,6 +853,66 @@ const Employees = () => {
                                                 <p className="text-sm mt-1">{renderField(selectedEmployee.spouse_tel_no)}</p>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            {/* Files Tab */}
+                            <TabsContent value="files" className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Resume */}
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                                            Resume
+                                        </h4>
+                                        {selectedEmployee.resume ? (
+                                            <div className="space-y-3">
+                                                <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                                    <span className="text-sm font-medium">Resume File</span>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => downloadFile(selectedEmployee.resume!, 'Resume.pdf')}
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                    Download Resume
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">No resume uploaded</p>
+                                        )}
+                                    </div>
+
+                                    {/* 201 Files */}
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                                            201 Files
+                                        </h4>
+                                        {selectedEmployee.files && selectedEmployee.files.length > 0 ? (
+                                            <div className="space-y-3">
+                                                <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                    {selectedEmployee.files.map((file: any) => (
+                                                        <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                                            <div className="flex items-center space-x-2">
+                                                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                                                <span className="text-sm font-medium">{file.file_name}</span>
+                                                            </div>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => downloadFile(file.file_path, file.file_name)}
+                                                            >
+                                                                <Download className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">No 201 files uploaded</p>
+                                        )}
                                     </div>
                                 </div>
                             </TabsContent>
