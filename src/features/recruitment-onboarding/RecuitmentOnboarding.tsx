@@ -6,7 +6,7 @@ import RecruitmentInterviews from './tabs/RecruitmentInterviews';
 import RecruitmentHired from './tabs/RecruitmentHired';
 import InterviewDialog from './components/InterviewDialog';
 import CandidateDialog from './components/CandidateDialog';
-import JobDetailDialog from './components/JobDetailDialog';
+import JobDetailDialog from '../job-posting/components/JobDetailDialog';
 import { useRecruitmentData } from './hooks/useRecruitmentData';
 import { useRecruitmentDialogs } from './hooks/useRecruitmentDialog';
 import { useRecruitmentActions } from './hooks/useRecruitmentAction';

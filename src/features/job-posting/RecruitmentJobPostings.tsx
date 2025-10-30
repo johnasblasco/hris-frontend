@@ -2,28 +2,31 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, DollarSign, Eye, Trash2, Plus, Clock, Users } from "lucide-react";
+import { Building2, MapPin, DollarSign, Eye, Trash2, Plus, Clock, Users, Calendar } from "lucide-react";
 import { getStatusIcon } from "./constant";
 import JobFormDialog from "./components/JobFormDialog";
+import JobDetailDialog from "./components/JobDetailDialog"; // You'll need to create this
 import { toast } from "sonner";
 import { useRecruitmentDialogs } from "../recruitment-onboarding/hooks/useRecruitmentDialog";
+import { jobPostingAPI, type JobPosting, type CreateJobPostingRequest, type UpdateJobPostingRequest } from "./api";
 import api from "@/utils/axios";
-import { jobPostingAPI } from "./api";
-
 const RecruitmentJobPostings = () => {
     const [loading, setLoading] = useState(false);
-    const [, setError] = useState<string | null>(null);
-    const [jobs, setJobs] = useState<any[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [jobs, setJobs] = useState<JobPosting[]>([]);
     const [searchTerm] = useState("");
+    const [departments, setDepartments] = useState<any[]>([]);
 
     const {
         showJobDialog,
         setShowJobDialog,
+        selectedJob,
         setSelectedJob,
+        showJobDetailDialog,
         setShowJobDetailDialog,
     } = useRecruitmentDialogs();
 
-    const [newJob, setNewJob] = useState({
+    const [newJob, setNewJob] = useState<CreateJobPostingRequest>({
         title: "",
         department_id: "",
         work_type: "On-site",
@@ -45,41 +48,43 @@ const RecruitmentJobPostings = () => {
                 per_page: 50,
             });
 
-            if (response.data.isSuccess) {
-                const transformedJobs = response.data.job_postings.map((job: any) => ({
-                    id: job.id.toString(),
-                    title: job.title,
-                    department: job.department?.department_name || "Unknown",
-                    location: job.location,
-                    type: job.employment_type || "Full-time",
-                    salary_range: job.salary_range,
-                    status: job.status,
-                    applications_count: job.applications_count || 0,
-                    posted_date: job.posted_date,
-                    deadline_date: job.deadline_date,
-                    work_type: job.work_type || "On-site",
-                    description: job.description,
-                }));
-
-                setJobs(transformedJobs);
+            if (response.data.isSuccess && response.data.job_postings) {
+                setJobs(response.data.job_postings);
+            } else {
+                toast.error(response.data.message || "Failed to fetch job postings");
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching job postings:", error);
-            toast.error("Failed to fetch job postings");
+            const errorMessage = error.response?.data?.message || "Failed to fetch job postings";
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
     };
 
+    // Fetch departments for dropdown
+    const fetchDepartments = async () => {
+        try {
+            // You'll need to adjust this to match your departments API endpoint
+            const response = await api.get(`/dropdown/departments`);
+            if (response.data.isSuccess) {
+                setDepartments(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching departments:", error);
+        }
+    };
+
     useEffect(() => {
         fetchJobPostings();
+        fetchDepartments();
     }, []);
 
-    const createJobPosting = async (jobData: any) => {
+    const createJobPosting = async (jobData: CreateJobPostingRequest) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await api.post("/jobs", jobData);
+            const response = await jobPostingAPI.create(jobData);
             if (response.data.isSuccess) {
                 toast.success("Job created successfully!");
                 await fetchJobPostings();
@@ -97,19 +102,47 @@ const RecruitmentJobPostings = () => {
         }
     };
 
-    const updateJobStatus = async (jobId: string, status: string) => {
+    const updateJobPosting = async (jobId: string, jobData: UpdateJobPostingRequest) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await api.patch(`/jobs/${jobId}/status`, { status });
+            const response = await jobPostingAPI.update(jobId, jobData);
             if (response.data.isSuccess) {
-                toast.success(`Job ${status === "active" ? "published" : status === "closed" ? "closed" : "updated"} successfully`);
+                toast.success("Job updated successfully!");
+                await fetchJobPostings();
+                return true;
+            } else {
+                throw new Error(response.data.message);
+            }
+        } catch (err: any) {
+            const message = err.response?.data?.message || err.message || "Failed to update job";
+            setError(message);
+            toast.error(message);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const updateJobStatus = async (jobId: string, status: 'draft' | 'active' | 'closed') => {
+        return await updateJobPosting(jobId, { status });
+    };
+
+    const archiveJob = async (jobId: string) => {
+        if (!confirm("Are you sure you want to archive this job posting?")) return;
+
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await jobPostingAPI.archive(jobId);
+            if (response.data.isSuccess) {
+                toast.success("Job archived successfully");
                 await fetchJobPostings();
             } else {
                 throw new Error(response.data.message);
             }
         } catch (err: any) {
-            const message = err.response?.data?.message || err.message || "Failed to update job status";
+            const message = err.response?.data?.message || err.message || "Failed to archive job";
             setError(message);
             toast.error(message);
         } finally {
@@ -117,36 +150,40 @@ const RecruitmentJobPostings = () => {
         }
     };
 
-    const deleteJob = async (jobId: string) => {
-        if (!confirm("Are you sure you want to delete this job posting?")) return;
-
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await api.delete(`/jobs/${jobId}`);
-            if (response.data.isSuccess) {
-                toast.success("Job deleted successfully");
-                await fetchJobPostings();
-            } else {
-                throw new Error(response.data.message);
-            }
-        } catch (err: any) {
-            const message = err.response?.data?.message || err.message || "Failed to delete job";
-            setError(message);
-            toast.error(message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleOpenJobDetail = (job: any) => {
+    const handleOpenJobDetail = (job: JobPosting) => {
+        console.log("Opening job detail:", job); // Debug log
         setSelectedJob(job);
         setShowJobDetailDialog(true);
     };
 
     const handleCreateJobPosting = async () => {
+        // Validate required fields
+        if (!newJob.title.trim()) {
+            toast.error("Job title is required");
+            return;
+        }
+        if (!newJob.department_id) {
+            toast.error("Department is required");
+            return;
+        }
+
         const success = await createJobPosting(newJob);
-        if (success) setShowJobDialog(false);
+        if (success) {
+            setShowJobDialog(false);
+            // Reset form
+            setNewJob({
+                title: "",
+                department_id: "",
+                work_type: "On-site",
+                employment_type: "Full-time",
+                location: "",
+                salary_range: "",
+                status: "draft",
+                description: "",
+                posted_date: new Date().toISOString().split("T")[0],
+                deadline_date: "",
+            });
+        }
     };
 
     const formatDate = (dateString: string) => {
@@ -158,10 +195,14 @@ const RecruitmentJobPostings = () => {
         });
     };
 
-    const getApplicationsText = (count: number) => {
+    const getApplicationsText = (count: number = 0) => {
         if (count === 0) return "No applications";
         if (count === 1) return "1 application";
         return `${count} applications`;
+    };
+
+    const getDepartmentName = (job: JobPosting) => {
+        return job.department?.department_name || "Unknown Department";
     };
 
     return (
@@ -176,6 +217,14 @@ const RecruitmentJobPostings = () => {
                     Post New Job
                 </Button>
             </div>
+
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    <strong>Error: </strong>
+                    {error}
+                    <button onClick={() => setError(null)} className="float-right font-bold">×</button>
+                </div>
+            )}
 
             {loading ? (
                 <Card>
@@ -201,7 +250,7 @@ const RecruitmentJobPostings = () => {
                                             <CardDescription className="flex flex-wrap items-center gap-4 mt-2">
                                                 <span className="flex items-center gap-1">
                                                     <Building2 className="w-4 h-4" />
-                                                    {job.department || "No department"}
+                                                    {getDepartmentName(job)}
                                                 </span>
                                                 <span className="flex items-center gap-1">
                                                     <MapPin className="w-4 h-4" />
@@ -237,12 +286,26 @@ const RecruitmentJobPostings = () => {
                                                 <Users className="w-4 h-4" />
                                                 {getApplicationsText(job.applications_count)}
                                             </span>
-                                            {job.posted_date && <span>Posted: {formatDate(job.posted_date)}</span>}
-                                            {job.deadline_date && <span>Deadline: {formatDate(job.deadline_date)}</span>}
+                                            {job.posted_date && (
+                                                <span className="flex items-center gap-1">
+                                                    <Calendar className="w-4 h-4" />
+                                                    Posted: {formatDate(job.posted_date)}
+                                                </span>
+                                            )}
+                                            {job.deadline_date && (
+                                                <span className="flex items-center gap-1">
+                                                    <Calendar className="w-4 h-4" />
+                                                    Deadline: {formatDate(job.deadline_date)}
+                                                </span>
+                                            )}
                                             {job.work_type && <span>{job.work_type}</span>}
                                         </div>
                                         <div className="flex gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => handleOpenJobDetail(job)}>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleOpenJobDetail(job)}
+                                            >
                                                 <Eye className="w-4 h-4 mr-1" />
                                                 View
                                             </Button>
@@ -251,6 +314,7 @@ const RecruitmentJobPostings = () => {
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => updateJobStatus(job.id, "closed")}
+                                                    disabled={loading}
                                                 >
                                                     Close
                                                 </Button>
@@ -260,6 +324,7 @@ const RecruitmentJobPostings = () => {
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => updateJobStatus(job.id, "active")}
+                                                    disabled={loading}
                                                 >
                                                     Publish
                                                 </Button>
@@ -269,11 +334,17 @@ const RecruitmentJobPostings = () => {
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => updateJobStatus(job.id, "active")}
+                                                    disabled={loading}
                                                 >
                                                     Reopen
                                                 </Button>
                                             )}
-                                            <Button variant="outline" size="sm" onClick={() => deleteJob(job.id)}>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => archiveJob(job.id)}
+                                                disabled={loading}
+                                            >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
@@ -299,6 +370,7 @@ const RecruitmentJobPostings = () => {
                 </div>
             )}
 
+            {/* Job Form Dialog */}
             <JobFormDialog
                 open={showJobDialog}
                 onOpenChange={setShowJobDialog}
@@ -306,7 +378,17 @@ const RecruitmentJobPostings = () => {
                 onNewJobChange={setNewJob}
                 onCreateJob={handleCreateJobPosting}
                 loading={loading}
+                departments={departments}
             />
+
+            {/* Job Detail Dialog */}
+            {selectedJob && (
+                <JobDetailDialog
+                    open={showJobDetailDialog}
+                    onOpenChange={setShowJobDetailDialog}
+                    job={selectedJob}
+                />
+            )}
         </div>
     );
 };

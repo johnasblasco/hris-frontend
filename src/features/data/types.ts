@@ -30,6 +30,32 @@ export interface JobPosting {
     responsibilities?: string | null;
 }
 
+export interface CreateJobPostingRequest {
+    title: string;
+    department_id: string;
+    location?: string;
+    work_type?: string;
+    employment_type?: string;
+    salary_range?: string;
+    description?: string;
+    status?: 'draft' | 'active' | 'closed';
+    posted_date?: string;
+    deadline_date?: string;
+}
+
+
+export interface JobPostingResponse {
+    isSuccess: boolean;
+    message: string;
+    data?: JobPosting;
+    job_postings?: JobPosting[];
+    pagination?: {
+        current_page: number;
+        per_page: number;
+        total: number;
+        last_page: number;
+    };
+}
 
 export interface Candidate {
     id: string;

@@ -1,16 +1,50 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Clock, DollarSign, Building2, Users, Search, Filter, ArrowRight, CheckCircle, Upload, Star, Globe, Heart, Award } from 'lucide-react';
-const api = 'https://api-hris.slarenasitsolutions.com/public/api'
-// Types for our API data
+import {
+    MapPin,
+    Clock,
+    DollarSign,
+    Building2,
+    Users,
+    Search,
+    Filter,
+    ArrowRight,
+    CheckCircle,
+    Upload,
+    Star,
+    Globe,
+    Heart,
+    Award,
+} from "lucide-react";
+
+const api = "https://api-hris.slarenasitsolutions.com/public/api";
+
 interface Department {
     id: string;
     department_name: string;
@@ -54,29 +88,29 @@ interface JobPostingsResponse {
     pagination: PaginationInfo;
 }
 
-// Mock company info (you might want to fetch this from API too)
 const companyInfo = {
-    name: 'SNL IT Solutions',
-    description: 'We\'re revolutionizing human resources technology with innovative solutions that help companies manage their most valuable asset - their people.',
-    mission: 'SnL Virtual Partner’s mission is to provide businesses with high-quality virtual outsourcing services that let them concentrate on their core competencies and meet their strategic goals. Delivering cutting-edge solutions that improve clients’ operations, cut costs, and sharpen their competitive edge in the virtual market, is part of our mission to offer them exceptional value. We at SnL Virtual Partners are dedicated to building enduring relationships with our clients and providing exceptional value that fuels their success and growth.',
-    values: ['Innovation', 'Collaboration', 'Integrity', 'Growth', 'Customer Focus'],
+    name: "SNL IT Solutions",
+    description:
+        "We're revolutionizing human resources technology with innovative solutions that help companies manage their most valuable asset - their people.",
+    mission:
+        "SnL Virtual Partner’s mission is to provide businesses with high-quality virtual outsourcing services that let them concentrate on their core competencies and meet their strategic goals.",
+    values: ["Innovation", "Collaboration", "Integrity", "Growth", "Customer Focus"],
     stats: {
-        employees: '10+',
-        offices: '2',
-        founded: '2014',
-        customers: '1000+'
-    }
+        employees: "10+",
+        offices: "2",
+        founded: "2014",
+        customers: "1000+",
+    },
 };
 
 export function CandidatePortal() {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [locationFilter, setLocationFilter] = useState('all');
-    const [departmentFilter, setDepartmentFilter] = useState('all');
+    const [searchTerm, setSearchTerm] = useState("");
+    const [locationFilter, setLocationFilter] = useState("all");
+    const [departmentFilter, setDepartmentFilter] = useState("all");
     const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
     const [showApplicationForm, setShowApplicationForm] = useState(false);
     const [applicationSubmitted, setApplicationSubmitted] = useState(false);
 
-    // API states
     const [jobs, setJobs] = useState<JobPosting[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [workLocations, setWorkLocations] = useState<WorkLocation[]>([]);
@@ -84,66 +118,48 @@ export function CandidatePortal() {
     const [error, setError] = useState<string | null>(null);
     const [pagination, setPagination] = useState<PaginationInfo | null>(null);
 
-    // Fetch job postings from API
-    const fetchJobPostings = async (search = '', departmentId = '') => {
+    const fetchJobPostings = async (search = "", departmentId = "") => {
         try {
             setLoading(true);
             setError(null);
-
             const params = new URLSearchParams();
-            if (search) params.append('search', search);
-            if (departmentId && departmentId !== 'all') params.append('department_id', departmentId);
-            params.append('per_page', '12');
+            if (search) params.append("search", search);
+            if (departmentId && departmentId !== "all") params.append("department_id", departmentId);
+            params.append("per_page", "12");
 
             const response = await fetch(`${api}/job-postings?${params.toString()}`);
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch job postings');
-            }
+            if (!response.ok) throw new Error("Failed to fetch job postings");
 
             const data: JobPostingsResponse = await response.json();
-
             if (data.isSuccess) {
                 setJobs(data.job_postings);
                 setPagination(data.pagination);
-            } else {
-                throw new Error(data.message);
-            }
+            } else throw new Error(data.message);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred');
-            console.error('Error fetching job postings:', err);
+            setError(err instanceof Error ? err.message : "An error occurred");
+            console.error("Error fetching job postings:", err);
         } finally {
             setLoading(false);
         }
     };
 
-    // Fetch departments from dropdown API
     const fetchDepartments = async () => {
         try {
             const response = await fetch(`${api}/dropdown/departments`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.isSuccess) {
-                    setDepartments(data.data || []);
-                }
-            }
+            const data = await response.json();
+            if (response.ok && data.isSuccess) setDepartments(data.data || []);
         } catch (err) {
-            console.error('Error fetching departments:', err);
+            console.error("Error fetching departments:", err);
         }
     };
 
-    // Fetch work locations from dropdown API
     const fetchWorkLocations = async () => {
         try {
             const response = await fetch(`${api}/dropdown/work-locations`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.isSuccess) {
-                    setWorkLocations(data.data || []);
-                }
-            }
+            const data = await response.json();
+            if (response.ok && data.isSuccess) setWorkLocations(data.data || []);
         } catch (err) {
-            console.error('Error fetching work locations:', err);
+            console.error("Error fetching work locations:", err);
         }
     };
 
@@ -153,30 +169,19 @@ export function CandidatePortal() {
         fetchWorkLocations();
     }, []);
 
-    // Enhanced job filtering on the client side for location and other filters
-    const filteredJobs = jobs.filter(job => {
-        const matchesLocation = !locationFilter || locationFilter === 'all' ||
-            job.location.toLowerCase().includes(locationFilter.toLowerCase());
-        const matchesDepartment = !departmentFilter || departmentFilter === 'all' ||
-            job.department_id === departmentFilter;
+    const filteredJobs = jobs.filter((job) => {
+        const matchesLocation =
+            !locationFilter || locationFilter === "all" || job.location.toLowerCase().includes(locationFilter.toLowerCase());
+        const matchesDepartment = !departmentFilter || departmentFilter === "all" || job.department_id === departmentFilter;
         return matchesLocation && matchesDepartment;
     });
 
-    // Handle search with API
-    const handleSearch = () => {
-        fetchJobPostings(searchTerm, departmentFilter);
-    };
-
-    // Handle filter changes
+    const handleSearch = () => fetchJobPostings(searchTerm, departmentFilter);
     const handleDepartmentFilterChange = (value: string) => {
         setDepartmentFilter(value);
         fetchJobPostings(searchTerm, value);
     };
-
-    // Handle location filter (client-side only since API doesn't support it)
-    const handleLocationFilterChange = (value: string) => {
-        setLocationFilter(value);
-    };
+    const handleLocationFilterChange = (value: string) => setLocationFilter(value);
 
     const handleApplyNow = (job: JobPosting) => {
         setSelectedJob(job);
@@ -186,39 +191,29 @@ export function CandidatePortal() {
     const handleSubmitApplication = () => {
         setApplicationSubmitted(true);
         setShowApplicationForm(false);
-        // Simulate application submission
-        setTimeout(() => {
-            setApplicationSubmitted(false);
-        }, 3000);
+        setTimeout(() => setApplicationSubmitted(false), 3000);
     };
 
-    // Format date to relative time (e.g., "3 days ago")
     const formatRelativeTime = (dateString: string) => {
         const date = new Date(dateString);
         const now = new Date();
         const diffTime = Math.abs(now.getTime() - date.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 1) return '1 day ago';
+        if (diffDays === 1) return "1 day ago";
         if (diffDays < 7) return `${diffDays} days ago`;
         if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
         return `${Math.ceil(diffDays / 30)} months ago`;
     };
 
-    // Get unique locations from jobs for fallback filter options
-    const getUniqueJobLocations = () => {
-        const locations = jobs.map(job => job.location).filter(Boolean);
-        return [...new Set(locations)];
-    };
+    const getUniqueJobLocations = () => [...new Set(jobs.map((job) => job.location).filter(Boolean))];
 
-    // Enhanced job card renderer with API data
     const renderJobCard = (job: JobPosting) => {
-        const department = departments.find(dept => dept.id === job.department_id);
-        const departmentName = department?.department_name || 'Unknown Department';
+        const department = departments.find((dept) => dept.id === job.department_id);
+        const departmentName = department?.department_name || "Unknown Department";
         const postedTime = formatRelativeTime(job.created_at);
 
         return (
-            <Card key={job.id} className={`relative ${job.featured ? 'ring-2 ring-primary' : ''}`}>
+            <Card key={job.id} className={`relative ${job.featured ? "ring-2 ring-primary" : ""}`}>
                 {job.featured && (
                     <div className="absolute -top-2 left-4">
                         <Badge className="bg-primary">Featured</Badge>
@@ -239,11 +234,11 @@ export function CandidatePortal() {
                                 </span>
                                 <span className="flex items-center gap-1">
                                     <Clock className="w-4 h-4" />
-                                    {job.type || 'Full-time'}
+                                    {job.type || "Full-time"}
                                 </span>
                                 <span className="flex items-center gap-1">
                                     <Globe className="w-4 h-4" />
-                                    {job.remote || 'Hybrid'}
+                                    {job.remote || "Hybrid"}
                                 </span>
                             </div>
                         </div>
@@ -258,7 +253,7 @@ export function CandidatePortal() {
                 </CardHeader>
                 <CardContent>
                     <p className="text-muted-foreground mb-4 line-clamp-2">
-                        {job.description || 'Join our team and contribute to exciting projects in a dynamic environment.'}
+                        {job.description || "Join our team and contribute to exciting projects in a dynamic environment."}
                     </p>
                     <div className="flex justify-between items-center">
                         <Button variant="outline" onClick={() => setSelectedJob(job)}>
