@@ -6,7 +6,6 @@ import RecruitmentInterviews from './tabs/RecruitmentInterviews';
 import RecruitmentHired from './tabs/RecruitmentHired';
 import InterviewDialog from './components/InterviewDialog';
 import CandidateDialog from './components/CandidateDialog';
-import JobDetailDialog from '../job-posting/components/JobDetailDialog';
 import { useRecruitmentData } from './hooks/useRecruitmentData';
 import { useRecruitmentDialogs } from './hooks/useRecruitmentDialog';
 import { useRecruitmentActions } from './hooks/useRecruitmentAction';
@@ -16,7 +15,6 @@ const RecruitmentOnboarding = () => {
 
     const {
         applicants,
-        hiredApplicants,
         interviews,
         hiredEmployees,
         loading,
@@ -29,20 +27,13 @@ const RecruitmentOnboarding = () => {
 
 
     const {
-        showJobDialog,
         setShowJobDialog,
         showInterviewDialog,
         setShowInterviewDialog,
         showCandidateDialog,
         setShowCandidateDialog,
-        showJobDetailDialog,
-        setShowJobDetailDialog,
         selectedCandidate,
         setSelectedCandidate,
-        selectedJob,
-        setSelectedJob,
-        newJob,
-        setNewJob,
         newInterview,
         setNewInterview
     } = useRecruitmentDialogs();
@@ -116,17 +107,6 @@ const RecruitmentOnboarding = () => {
                     />
                 </TabsContent>
 
-                {/* <TabsContent value="jobs" className="mt-6">
-                    <RecruitmentJobPostings
-                        jobs={jobs}
-                        loading={loading}
-                        onShowJobDialog={setShowJobDialog}
-                        onOpenJobDetail={handleOpenJobDetail}
-                        onUpdateJobStatus={updateJobStatus}
-                        onDeleteJob={deleteJob}
-                    />
-                </TabsContent> */}
-
                 <TabsContent value="interviews" className="mt-6">
                     <RecruitmentInterviews
                         interviews={interviews}
@@ -144,16 +124,6 @@ const RecruitmentOnboarding = () => {
                     />
                 </TabsContent>
             </Tabs>
-
-            {/* Job Form Dialog
-            <JobFormDialog
-                open={showJobDialog}
-                onOpenChange={setShowJobDialog}
-                newJob={newJob}
-                onNewJobChange={setNewJob}
-                onCreateJob={handleCreateJobPosting}
-                loading={loading}
-            /> */}
 
             {/* Interview Dialog */}
             <InterviewDialog
@@ -186,12 +156,6 @@ const RecruitmentOnboarding = () => {
                 }}
             />
 
-            {/* Job Detail Dialog */}
-            <JobDetailDialog
-                open={showJobDetailDialog}
-                onOpenChange={setShowJobDetailDialog}
-                job={selectedJob}
-            />
         </div>
     );
 };
