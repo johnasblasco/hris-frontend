@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { toast } from "sonner";
-import { applicantAPI, jobPostingAPI, interviewAPI } from '../services/api';
+import { applicantAPI, interviewAPI } from '../services/api';
 import { transformApplicant, transformInterview } from '../utils/transformer';
 
 export const useRecruitmentData = (activeTab: string) => {
     const [applicants, setApplicants] = useState([]);
     const [hiredApplicants, setHiredApplicants] = useState([]);
-    const [jobs, setJobs] = useState([]);
     const [interviews, setInterviews] = useState([]);
     const [hiredEmployees, setHiredEmployees] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -54,40 +53,7 @@ export const useRecruitmentData = (activeTab: string) => {
         }
     };
 
-    const fetchJobPostings = async () => {
-        setLoading(true);
-        try {
-            const response = await jobPostingAPI.getAll({
-                search: searchTerm,
-                per_page: 50
-            });
 
-            if (response.data.isSuccess) {
-                const transformedJobs = response.data.job_postings.map((job: any) => ({
-                    id: job.id.toString(),
-                    title: job.title,
-                    department: job.department?.department_name || 'Unknown',
-                    location: job.location,
-                    type: job.employment_type || 'Full-time',
-                    salary: job.salary_range,
-                    status: job.status,
-                    applications: 0,
-                    posted: job.posted_date,
-                    deadline: job.deadline_date,
-                    description: job.job_posting?.description,
-                    requirements: [],
-                    responsibilities: job.description,
-                }));
-
-                setJobs(transformedJobs);
-            }
-        } catch (error) {
-            console.error('Error fetching job postings:', error);
-            toast.error('Failed to fetch job postings');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const fetchInterviews = async () => {
         setLoading(true);
@@ -115,9 +81,6 @@ export const useRecruitmentData = (activeTab: string) => {
             case 'candidates':
                 fetchApplicants();
                 break;
-            case 'jobs':
-                fetchJobPostings();
-                break;
             case 'interviews':
                 fetchInterviews();
                 break;
@@ -130,7 +93,6 @@ export const useRecruitmentData = (activeTab: string) => {
     return {
         applicants,
         hiredApplicants,
-        jobs,
         interviews,
         hiredEmployees,
         loading,
@@ -138,7 +100,6 @@ export const useRecruitmentData = (activeTab: string) => {
         setSearchTerm,
         fetchApplicants,
         fetchHiredApplicants,
-        fetchJobPostings,
         fetchInterviews
     };
 };

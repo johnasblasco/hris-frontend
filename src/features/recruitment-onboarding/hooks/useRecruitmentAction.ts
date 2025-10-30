@@ -5,14 +5,12 @@ import { stageMapping } from '../utils/constant';
 interface UseRecruitmentActionsProps {
     fetchApplicants: () => void;
     fetchHiredApplicants: () => void;
-    fetchJobPostings: () => void;
     fetchInterviews: () => void;
 }
 
 export const useRecruitmentActions = ({
     fetchApplicants,
     fetchHiredApplicants,
-    fetchJobPostings,
     fetchInterviews
 }: UseRecruitmentActionsProps) => {
     const [loading, setLoading] = useState(false);
@@ -80,68 +78,10 @@ export const useRecruitmentActions = ({
         }
     };
 
-    const createJobPosting = async (jobData: any) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await api.post('/jobs', jobData);
 
-            if (response.data.isSuccess) {
-                await fetchJobPostings();
-                return true;
-            } else {
-                throw new Error(response.data.message);
-            }
-        } catch (err: any) {
-            setError(err.response?.data?.message || err.message || 'Failed to create job posting');
-            console.error('Error creating job:', err);
-            return false;
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    const updateJobStatus = async (jobId: string, status: string) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await api.patch(`/jobs/${jobId}/status`, { status });
 
-            if (response.data.isSuccess) {
-                await fetchJobPostings();
-                return true;
-            } else {
-                throw new Error(response.data.message);
-            }
-        } catch (err: any) {
-            setError(err.response?.data?.message || err.message || 'Failed to update job status');
-            console.error('Error updating job status:', err);
-            return false;
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    const deleteJob = async (jobId: string) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await api.delete(`/jobs/${jobId}`);
-
-            if (response.data.isSuccess) {
-                await fetchJobPostings();
-                return true;
-            } else {
-                throw new Error(response.data.message);
-            }
-        } catch (err: any) {
-            setError(err.response?.data?.message || err.message || 'Failed to delete job');
-            console.error('Error deleting job:', err);
-            return false;
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const scheduleInterview = async (interviewData: any) => {
         setLoading(true);
@@ -209,9 +149,6 @@ export const useRecruitmentActions = ({
     return {
         moveCandidateToStage,
         hireApplicant,
-        createJobPosting,
-        updateJobStatus,
-        deleteJob,
         scheduleInterview,
         updateInterviewStatus,
         submitInterviewFeedback,

@@ -7,6 +7,7 @@ import ReportAnalytics from '@/features/report-analytics/ReportAnalytics'
 import AttendanceLeaving from '@/features/attendance-leaving/AttendanceLeaving'
 import SetupManager from '@/features/setup-manager/SetupManager'
 import Employees from '@/features/employees/Employees'
+import RecruitmentJobPostings from '@/features/job-posting/RecruitmentJobPostings'
 import RecruitmentOnboarding from '@/features/recruitment-onboarding/RecuitmentOnboarding'
 const MainRoutes = () => {
     const routes = useRoutes([
@@ -25,6 +26,7 @@ const MainRoutes = () => {
                 { path: "setup-manager", element: <SetupManager /> },
                 { path: "attendance-leaving", element: <AttendanceLeaving /> },
                 { path: "employees", element: <Employees /> },
+                { path: "job-posting", element: <RecruitmentJobPostings /> },
                 { path: "recruitment-onboarding", element: <RecruitmentOnboarding /> },
             ],
         },

@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RecruitmentOverview from './tabs/RecruitmentOverview';
 import RecruitmentPipeline from './tabs/RecruitmentPipeline';
-import RecruitmentJobPostings from './tabs/RecruitmentJobPostings';
 import RecruitmentInterviews from './tabs/RecruitmentInterviews';
 import RecruitmentHired from './tabs/RecruitmentHired';
-import JobFormDialog from './components/JobFormDialog';
 import InterviewDialog from './components/InterviewDialog';
 import CandidateDialog from './components/CandidateDialog';
 import JobDetailDialog from './components/JobDetailDialog';
@@ -19,7 +17,6 @@ const RecruitmentOnboarding = () => {
     const {
         applicants,
         hiredApplicants,
-        jobs,
         interviews,
         hiredEmployees,
         loading,
@@ -27,7 +24,6 @@ const RecruitmentOnboarding = () => {
         setSearchTerm,
         fetchApplicants,
         fetchHiredApplicants,
-        fetchJobPostings,
         fetchInterviews
     } = useRecruitmentData(activeTab);
 
@@ -54,16 +50,12 @@ const RecruitmentOnboarding = () => {
     const {
         moveCandidateToStage,
         hireApplicant,
-        createJobPosting,
-        updateJobStatus,
-        deleteJob,
         scheduleInterview,
         updateInterviewStatus,
         submitInterviewFeedback
     } = useRecruitmentActions({
         fetchApplicants,
         fetchHiredApplicants,
-        fetchJobPostings,
         fetchInterviews
     });
 
@@ -73,19 +65,6 @@ const RecruitmentOnboarding = () => {
         setShowCandidateDialog(true);
     };
 
-    // Handler for opening job detail
-    const handleOpenJobDetail = (job: any) => {
-        setSelectedJob(job);
-        setShowJobDetailDialog(true);
-    };
-
-    // Handler for creating job posting
-    const handleCreateJobPosting = async () => {
-        const success = await createJobPosting(newJob);
-        if (success) {
-            setShowJobDialog(false);
-        }
-    };
 
     // Handler for scheduling interview
     const handleScheduleInterview = async () => {
@@ -105,10 +84,9 @@ const RecruitmentOnboarding = () => {
                     </div>
                 </div>
 
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="pipeline">Candidates</TabsTrigger>
-                    <TabsTrigger value="jobs">Job Postings</TabsTrigger>
                     <TabsTrigger value="interviews">Interviews</TabsTrigger>
                     <TabsTrigger value="hired">Hired</TabsTrigger>
                 </TabsList>
@@ -138,7 +116,7 @@ const RecruitmentOnboarding = () => {
                     />
                 </TabsContent>
 
-                <TabsContent value="jobs" className="mt-6">
+                {/* <TabsContent value="jobs" className="mt-6">
                     <RecruitmentJobPostings
                         jobs={jobs}
                         loading={loading}
@@ -147,7 +125,7 @@ const RecruitmentOnboarding = () => {
                         onUpdateJobStatus={updateJobStatus}
                         onDeleteJob={deleteJob}
                     />
-                </TabsContent>
+                </TabsContent> */}
 
                 <TabsContent value="interviews" className="mt-6">
                     <RecruitmentInterviews
@@ -167,7 +145,7 @@ const RecruitmentOnboarding = () => {
                 </TabsContent>
             </Tabs>
 
-            {/* Job Form Dialog */}
+            {/* Job Form Dialog
             <JobFormDialog
                 open={showJobDialog}
                 onOpenChange={setShowJobDialog}
@@ -175,7 +153,7 @@ const RecruitmentOnboarding = () => {
                 onNewJobChange={setNewJob}
                 onCreateJob={handleCreateJobPosting}
                 loading={loading}
-            />
+            /> */}
 
             {/* Interview Dialog */}
             <InterviewDialog
