@@ -43,6 +43,9 @@ import {
     Award,
 } from "lucide-react";
 
+
+
+
 const api = "https://api-hris.slarenasitsolutions.com/public/api";
 
 interface Department {
@@ -104,10 +107,11 @@ const companyInfo = {
 };
 
 export function CandidatePortal() {
+    const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+    const [, setIsApplicationOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [locationFilter, setLocationFilter] = useState("all");
     const [departmentFilter, setDepartmentFilter] = useState("all");
-    const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
     const [showApplicationForm, setShowApplicationForm] = useState(false);
     const [applicationSubmitted, setApplicationSubmitted] = useState(false);
 
@@ -163,6 +167,7 @@ export function CandidatePortal() {
         }
     };
 
+
     useEffect(() => {
         fetchJobPostings();
         fetchDepartments();
@@ -184,16 +189,17 @@ export function CandidatePortal() {
     const handleLocationFilterChange = (value: string) => setLocationFilter(value);
 
     const handleApplyNow = (job: JobPosting) => {
-        setSelectedJob(job);
         setShowApplicationForm(true);
+        setSelectedJob(job);
     };
+
 
     const handleSubmitApplication = () => {
         setApplicationSubmitted(true);
         setShowApplicationForm(false);
+        setSelectedJob(null);
         setTimeout(() => setApplicationSubmitted(false), 3000);
     };
-
     const formatRelativeTime = (dateString: string) => {
         const date = new Date(dateString);
         const now = new Date();
@@ -259,7 +265,12 @@ export function CandidatePortal() {
                         <Button variant="outline" onClick={() => setSelectedJob(job)}>
                             View Details
                         </Button>
-                        <Button onClick={() => handleApplyNow(job)}>
+                        <Button
+                            onClick={() => {
+                                setShowApplicationForm(true);
+                                setSelectedJob(selectedJob);
+                            }}
+                        >
                             Apply Now
                             <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
@@ -511,6 +522,7 @@ export function CandidatePortal() {
             {/* Job Details Dialog */}
             {selectedJob && (
                 <Dialog open={!!selectedJob && !showApplicationForm} onOpenChange={() => setSelectedJob(null)}>
+
                     <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
                             <div className="flex justify-between items-start">
