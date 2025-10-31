@@ -296,7 +296,7 @@ export function PayrollProcessing() {
             {/* Employee Detail Modal */}
             {selectedEmployee && (
                 <Dialog open={!!selectedEmployee} onOpenChange={() => setSelectedEmployee(null)}>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="min-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Payroll Breakdown - {selectedEmployee.name}</DialogTitle>
                             <DialogDescription>Detailed earnings and deductions</DialogDescription>
@@ -417,7 +417,7 @@ export function PayrollProcessing() {
             {/* Pay Stub Modal */}
             {showPayStub && (
                 <Dialog open={!!showPayStub} onOpenChange={() => setShowPayStub(null)}>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="min-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Official Pay Stub</DialogTitle>
                             <DialogDescription>Payment statement for the current period</DialogDescription>

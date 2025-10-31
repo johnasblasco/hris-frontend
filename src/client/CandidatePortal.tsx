@@ -43,9 +43,6 @@ import {
     Award,
 } from "lucide-react";
 
-
-
-
 const api = "https://api-hris.slarenasitsolutions.com/public/api";
 
 interface Department {
@@ -91,12 +88,33 @@ interface JobPostingsResponse {
     pagination: PaginationInfo;
 }
 
+interface ApplicationFormData {
+    job_posting_id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string;
+    resume: File | null;
+    cover_letter: string;
+    linkedin_profile: string;
+    portfolio_website: string;
+    salary_expectations: string;
+    available_start_date: string;
+    experience_years: number | string;
+}
+
+interface ApplicationResponse {
+    isSuccess: boolean;
+    message: string;
+    data?: any;
+}
+
 const companyInfo = {
     name: "SNL IT Solutions",
     description:
         "We're revolutionizing human resources technology with innovative solutions that help companies manage their most valuable asset - their people.",
     mission:
-        "SnL Virtual Partner’s mission is to provide businesses with high-quality virtual outsourcing services that let them concentrate on their core competencies and meet their strategic goals.",
+        "SnL Virtual Partner's mission is to provide businesses with high-quality virtual outsourcing services that let them concentrate on their core competencies and meet their strategic goals.",
     values: ["Innovation", "Collaboration", "Integrity", "Growth", "Customer Focus"],
     stats: {
         employees: "10+",
@@ -108,12 +126,13 @@ const companyInfo = {
 
 export function CandidatePortal() {
     const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
-
     const [searchTerm, setSearchTerm] = useState("");
     const [locationFilter, setLocationFilter] = useState("all");
     const [departmentFilter, setDepartmentFilter] = useState("all");
     const [showApplicationForm, setShowApplicationForm] = useState(false);
     const [applicationSubmitted, setApplicationSubmitted] = useState(false);
+    const [applicationError, setApplicationError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [jobs, setJobs] = useState<JobPosting[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
@@ -121,6 +140,22 @@ export function CandidatePortal() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+
+    // Application form state
+    const [applicationData, setApplicationData] = useState<ApplicationFormData>({
+        job_posting_id: "",
+        first_name: "",
+        last_name: "",
+        email: "",
+        phone_number: "",
+        resume: null,
+        cover_letter: "",
+        linkedin_profile: "",
+        portfolio_website: "",
+        salary_expectations: "",
+        available_start_date: "",
+        experience_years: "",
+    });
 
     const fetchJobPostings = async (search = "", departmentId = "") => {
         try {
@@ -167,7 +202,6 @@ export function CandidatePortal() {
         }
     };
 
-
     useEffect(() => {
         fetchJobPostings();
         fetchDepartments();
@@ -191,15 +225,108 @@ export function CandidatePortal() {
     const handleApplyNow = (job: JobPosting) => {
         setShowApplicationForm(true);
         setSelectedJob(job);
+        // Set the job_posting_id when applying
+        setApplicationData(prev => ({
+            ...prev,
+            job_posting_id: job.id
+        }));
+        setApplicationError(null);
     };
 
+    const handleInputChange = (field: keyof ApplicationFormData, value: string | number | File) => {
+        setApplicationData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
 
-    const handleSubmitApplication = () => {
-        setApplicationSubmitted(true);
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] || null;
+        setApplicationData(prev => ({
+            ...prev,
+            resume: file
+        }));
+    };
+
+    const handleSubmitApplication = async () => {
+        if (!selectedJob) return;
+
+        setIsSubmitting(true);
+        setApplicationError(null);
+
+        try {
+            // Validate required fields
+            if (!applicationData.first_name || !applicationData.last_name || !applicationData.email) {
+                throw new Error("First name, last name, and email are required fields.");
+            }
+
+            const formData = new FormData();
+
+            // Append all form data
+            formData.append('job_posting_id', applicationData.job_posting_id);
+            formData.append('first_name', applicationData.first_name);
+            formData.append('last_name', applicationData.last_name);
+            formData.append('email', applicationData.email);
+            formData.append('phone_number', applicationData.phone_number || '');
+            formData.append('cover_letter', applicationData.cover_letter || '');
+            formData.append('linkedin_profile', applicationData.linkedin_profile || '');
+            formData.append('portfolio_website', applicationData.portfolio_website || '');
+            formData.append('salary_expectations', applicationData.salary_expectations || '');
+            formData.append('available_start_date', applicationData.available_start_date || '');
+            formData.append('experience_years', applicationData.experience_years?.toString() || '0');
+
+            // Append resume file if exists
+            if (applicationData.resume) {
+                formData.append('resume', applicationData.resume);
+            }
+
+            const response = await fetch(`${api}/applicants`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result: ApplicationResponse = await response.json();
+
+            if (response.ok && result.isSuccess) {
+                setApplicationSubmitted(true);
+                setShowApplicationForm(false);
+                setSelectedJob(null);
+
+                // Reset form data
+                setApplicationData({
+                    job_posting_id: "",
+                    first_name: "",
+                    last_name: "",
+                    email: "",
+                    phone_number: "",
+                    resume: null,
+                    cover_letter: "",
+                    linkedin_profile: "",
+                    portfolio_website: "",
+                    salary_expectations: "",
+                    available_start_date: "",
+                    experience_years: "",
+                });
+
+                setTimeout(() => setApplicationSubmitted(false), 5000);
+            } else {
+                throw new Error(result.message || 'Failed to submit application');
+            }
+        } catch (err) {
+            console.error('Application submission error:', err);
+            setApplicationError(err instanceof Error ? err.message : 'An unexpected error occurred');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Handle closing the application form
+    const handleCloseApplicationForm = () => {
         setShowApplicationForm(false);
-        setSelectedJob(null);
-        setTimeout(() => setApplicationSubmitted(false), 3000);
+        setSelectedJob(null); // Clear selected job when closing application form
+        setApplicationError(null);
     };
+
     const formatRelativeTime = (dateString: string) => {
         const date = new Date(dateString);
         const now = new Date();
@@ -265,12 +392,7 @@ export function CandidatePortal() {
                         <Button variant="outline" onClick={() => setSelectedJob(job)}>
                             View Details
                         </Button>
-                        <Button
-                            onClick={() => {
-                                setShowApplicationForm(true);
-                                setSelectedJob(selectedJob);
-                            }}
-                        >
+                        <Button onClick={() => handleApplyNow(job)}>
                             Apply Now
                             <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
@@ -621,8 +743,14 @@ export function CandidatePortal() {
             )}
 
             {/* Application Form Dialog */}
-            <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <Dialog open={showApplicationForm} onOpenChange={(open) => {
+                if (!open) {
+                    handleCloseApplicationForm();
+                } else {
+                    setShowApplicationForm(true);
+                }
+            }}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Apply for {selectedJob?.title}</DialogTitle>
                         <DialogDescription>
@@ -630,26 +758,68 @@ export function CandidatePortal() {
                         </DialogDescription>
                     </DialogHeader>
 
+                    {applicationError && (
+                        <div className="bg-destructive/15 text-destructive p-4 rounded-lg">
+                            <p>{applicationError}</p>
+                        </div>
+                    )}
+
                     <div className="space-y-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="firstName">First Name *</Label>
-                                <Input id="firstName" placeholder="John" />
+                                <Input
+                                    id="firstName"
+                                    placeholder="John"
+                                    value={applicationData.first_name}
+                                    onChange={(e) => handleInputChange('first_name', e.target.value)}
+                                    required
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="lastName">Last Name *</Label>
-                                <Input id="lastName" placeholder="Doe" />
+                                <Input
+                                    id="lastName"
+                                    placeholder="Doe"
+                                    value={applicationData.last_name}
+                                    onChange={(e) => handleInputChange('last_name', e.target.value)}
+                                    required
+                                />
                             </div>
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="email">Email Address *</Label>
-                            <Input id="email" type="email" placeholder="john.doe@email.com" />
+                            <Input
+                                id="email"
+                                type="email"
+                                placeholder="john.doe@email.com"
+                                value={applicationData.email}
+                                onChange={(e) => handleInputChange('email', e.target.value)}
+                                required
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="phone">Phone Number</Label>
-                            <Input id="phone" placeholder="+1 (555) 123-4567" />
+                            <Input
+                                id="phone"
+                                placeholder="+1 (555) 123-4567"
+                                value={applicationData.phone_number}
+                                onChange={(e) => handleInputChange('phone_number', e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="experience">Years of Experience</Label>
+                            <Input
+                                id="experience"
+                                type="number"
+                                placeholder="5"
+                                min="0"
+                                value={applicationData.experience_years}
+                                onChange={(e) => handleInputChange('experience_years', e.target.value)}
+                            />
                         </div>
 
                         <div className="space-y-2">
@@ -657,11 +827,27 @@ export function CandidatePortal() {
                             <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
                                 <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                                 <p className="text-sm text-muted-foreground mb-2">
-                                    Drag and drop your resume or click to browse
+                                    {applicationData.resume ? applicationData.resume.name : "Drag and drop your resume or click to browse"}
                                 </p>
-                                <Button variant="outline" size="sm">
+                                <Input
+                                    id="resume"
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                />
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => document.getElementById('resume')?.click()}
+                                >
                                     Choose File
                                 </Button>
+                                {applicationData.resume && (
+                                    <p className="text-xs text-green-600 mt-2">
+                                        ✓ {applicationData.resume.name} selected
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -671,36 +857,66 @@ export function CandidatePortal() {
                                 id="coverLetter"
                                 placeholder="Tell us why you're interested in this position and what makes you a great fit..."
                                 rows={4}
+                                value={applicationData.cover_letter}
+                                onChange={(e) => handleInputChange('cover_letter', e.target.value)}
                             />
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="linkedin">LinkedIn Profile</Label>
-                            <Input id="linkedin" placeholder="https://linkedin.com/in/yourprofile" />
+                            <Input
+                                id="linkedin"
+                                placeholder="https://linkedin.com/in/yourprofile"
+                                value={applicationData.linkedin_profile}
+                                onChange={(e) => handleInputChange('linkedin_profile', e.target.value)}
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="portfolio">Portfolio/Website</Label>
-                            <Input id="portfolio" placeholder="https://yourportfolio.com" />
+                            <Input
+                                id="portfolio"
+                                placeholder="https://yourportfolio.com"
+                                value={applicationData.portfolio_website}
+                                onChange={(e) => handleInputChange('portfolio_website', e.target.value)}
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="salary">Salary Expectations</Label>
-                            <Input id="salary" placeholder="$80,000 - $100,000" />
+                            <Input
+                                id="salary"
+                                placeholder="$80,000 - $100,000"
+                                value={applicationData.salary_expectations}
+                                onChange={(e) => handleInputChange('salary_expectations', e.target.value)}
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="availability">Available Start Date</Label>
-                            <Input id="availability" placeholder="Immediately / 2 weeks notice / etc." />
+                            <Input
+                                id="availability"
+                                placeholder="Immediately / 2 weeks notice / etc."
+                                value={applicationData.available_start_date}
+                                onChange={(e) => handleInputChange('available_start_date', e.target.value)}
+                            />
                         </div>
                     </div>
 
                     <DialogFooter className="flex gap-3">
-                        <Button variant="outline" onClick={() => setShowApplicationForm(false)}>
+                        <Button
+                            variant="outline"
+                            onClick={handleCloseApplicationForm}
+                            disabled={isSubmitting}
+                        >
                             Cancel
                         </Button>
-                        <Button onClick={handleSubmitApplication}>
-                            Submit Application
+                        <Button
+                            onClick={handleSubmitApplication}
+                            disabled={isSubmitting || !applicationData.first_name || !applicationData.last_name || !applicationData.email}
+                        >
+                            {isSubmitting ? "Submitting..." : "Submit Application"}
+                            {!isSubmitting && <ArrowRight className="w-4 h-4 ml-2" />}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
