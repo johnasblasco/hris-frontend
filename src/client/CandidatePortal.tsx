@@ -280,7 +280,7 @@ export function CandidatePortal() {
                 formData.append('resume', applicationData.resume);
             }
 
-            const response = await fetch(`${api}/applicants`, {
+            const response = await fetch(`${api}/create/applicants`, {
                 method: 'POST',
                 body: formData,
             });
