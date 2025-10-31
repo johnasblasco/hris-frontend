@@ -1,16 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
     Plus,
     Users,
     Calendar,
-    Mail,
-    MapPin,
-    CheckCircle,
-    Briefcase,
-    Clock
 } from 'lucide-react';
 import { recruitmentMetrics, getStageColor, getStageLabel, getInitials } from '../utils/constant';
 
@@ -27,12 +23,11 @@ interface RecruitmentOverviewProps {
 const RecruitmentOverview = ({
     applicants,
     interviews,
-    loading,
     onOpenCandidateDetail,
-    onShowJobDialog,
     onShowInterviewDialog,
     onSetActiveTab
 }: RecruitmentOverviewProps) => {
+    const navigate = useNavigate();
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -57,7 +52,7 @@ const RecruitmentOverview = ({
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Button className="h-20 flex flex-col gap-2" onClick={() => onShowJobDialog(true)}>
+                        <Button className="h-20 flex flex-col gap-2" onClick={() => navigate("/job-posting")}>
                             <Plus className="w-6 h-6" />
                             Post New Job
                         </Button>

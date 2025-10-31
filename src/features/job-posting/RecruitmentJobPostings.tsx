@@ -5,11 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, MapPin, DollarSign, Eye, Trash2, Plus, Clock, Users, Calendar } from "lucide-react";
 import { getStatusIcon } from "./constant";
 import JobFormDialog from "./components/JobFormDialog";
-import JobDetailDialog from "./components/JobDetailDialog"; // You'll need to create this
+import JobDetailDialog from "./components/JobDetailDialog";
 import { toast } from "sonner";
 import { useRecruitmentDialogs } from "../recruitment-onboarding/hooks/useRecruitmentDialog";
 import { jobPostingAPI, type JobPosting, type CreateJobPostingRequest, type UpdateJobPostingRequest } from "./api";
 import api from "@/utils/axios";
+
 const RecruitmentJobPostings = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -65,7 +66,6 @@ const RecruitmentJobPostings = () => {
     // Fetch departments for dropdown
     const fetchDepartments = async () => {
         try {
-            // You'll need to adjust this to match your departments API endpoint
             const response = await api.get(`/dropdown/departments`);
             if (response.data.isSuccess) {
                 setDepartments(response.data.data);
@@ -151,13 +151,12 @@ const RecruitmentJobPostings = () => {
     };
 
     const handleOpenJobDetail = (job: JobPosting) => {
-        console.log("Opening job detail:", job); // Debug log
+        console.log("Opening job detail:", job);
         setSelectedJob(job);
         setShowJobDetailDialog(true);
     };
 
     const handleCreateJobPosting = async () => {
-        // Validate required fields
         if (!newJob.title.trim()) {
             toast.error("Job title is required");
             return;
@@ -170,7 +169,6 @@ const RecruitmentJobPostings = () => {
         const success = await createJobPosting(newJob);
         if (success) {
             setShowJobDialog(false);
-            // Reset form
             setNewJob({
                 title: "",
                 department_id: "",
@@ -201,8 +199,40 @@ const RecruitmentJobPostings = () => {
         return `${count} applications`;
     };
 
+    // FIXED: Properly extract department name from the department object
     const getDepartmentName = (job: JobPosting) => {
-        return job.department?.department_name || "Unknown Department";
+        if (!job.department) return "Unknown Department";
+
+        // Check if department is a string (shouldn't be, but just in case)
+        if (typeof job.department === 'string') {
+            return job.department;
+        }
+
+        // Department is an object, so access the department_name property
+        return job.department.department_name || "Unknown Department";
+    };
+
+    // Also fix the JobDetailDialog to handle department objects properly
+    const JobDetailDialogFixed = ({ open, onOpenChange, job }: any) => {
+        if (!job) return null;
+
+        const getDepartmentNameForDialog = (job: JobPosting) => {
+            if (!job.department) return "Unknown Department";
+            if (typeof job.department === 'string') return job.department;
+            return job.department.department_name || "Unknown Department";
+        };
+
+        return (
+            <JobDetailDialog
+                open={open}
+                onOpenChange={onOpenChange}
+                job={{
+                    ...job,
+                    // Ensure department is a string for the dialog
+                    department: getDepartmentNameForDialog(job)
+                }}
+            />
+        );
     };
 
     return (
@@ -250,6 +280,7 @@ const RecruitmentJobPostings = () => {
                                             <CardDescription className="flex flex-wrap items-center gap-4 mt-2">
                                                 <span className="flex items-center gap-1">
                                                     <Building2 className="w-4 h-4" />
+                                                    {/* FIXED: Now properly rendering department name string */}
                                                     {getDepartmentName(job)}
                                                 </span>
                                                 <span className="flex items-center gap-1">
@@ -381,9 +412,9 @@ const RecruitmentJobPostings = () => {
                 departments={departments}
             />
 
-            {/* Job Detail Dialog */}
+            {/* Job Detail Dialog with fixed department handling */}
             {selectedJob && (
-                <JobDetailDialog
+                <JobDetailDialogFixed
                     open={showJobDetailDialog}
                     onOpenChange={setShowJobDetailDialog}
                     job={selectedJob}

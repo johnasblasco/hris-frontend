@@ -108,7 +108,7 @@ const companyInfo = {
 
 export function CandidatePortal() {
     const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
-    const [, setIsApplicationOpen] = useState(false);
+
     const [searchTerm, setSearchTerm] = useState("");
     const [locationFilter, setLocationFilter] = useState("all");
     const [departmentFilter, setDepartmentFilter] = useState("all");

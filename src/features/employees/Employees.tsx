@@ -9,19 +9,17 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Search, Edit, Eye, Users, UserCheck, UserX, Download, Filter, Phone, Mail, MapPin, Calendar, FileText } from "lucide-react";
+import { Search, Edit, Eye, Users, UserCheck, UserX, Download, Filter, Phone, Mail, MapPin, FileText } from "lucide-react";
 import EmployeeDialog from './components/EmployeeDialog';
 import api from '@/utils/axios'
 import type {
     Employee,
     Department,
     PositionType,
-    EmployeeListResponse,
-    EmployeeFormData,
-    EmployeeFilters
 } from './employeeTS';
 
 const Employees = () => {
+    const token = localStorage.getItem('token');
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [positions, setPositions] = useState<PositionType[]>([]);
@@ -39,7 +37,11 @@ const Employees = () => {
     const fetchEmployees = async (page = 1) => {
         try {
             setLoading(true);
-            const response = await api.get(`/employees?page=${page}`);
+            const response = await api.get(`/employees?page=${page}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
             const result = response.data;
 
             if (result.isSuccess) {
@@ -59,7 +61,11 @@ const Employees = () => {
     // Fetch employee details for view dialog
     const fetchEmployeeDetails = async (employeeId: number) => {
         try {
-            const response = await api.get(`/employees/${employeeId}`);
+            const response = await api.get(`/employees/${employeeId}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
             const result = response.data;
 
             if (result.isSuccess) {

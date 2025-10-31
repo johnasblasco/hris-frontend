@@ -47,12 +47,7 @@ const RecruitmentInterviews = ({
         );
     };
 
-    const getPastInterviews = () => {
-        return interviews.filter(interview =>
-            interview.status !== 'scheduled' ||
-            new Date(`${interview.date}T${interview.time}`) <= new Date()
-        );
-    };
+
 
     const formatDateTime = (date: string, time: string) => {
         const interviewDate = new Date(`${date}T${time}`);

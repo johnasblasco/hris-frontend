@@ -1,6 +1,5 @@
-import { Employee, Department, AttendanceRecord, LeaveRequest, PayrollSummary, JobPosting, Candidate, Interview, HiredEmployee } from '../types';
 
-export const mockEmployees: Employee[] = [
+export const mockEmployees = [
     {
         id: '1',
         employeeId: 'EMP001',
@@ -71,7 +70,7 @@ export const mockEmployees: Employee[] = [
     },
 ];
 
-export const mockDepartments: Department[] = [
+export const mockDepartments = [
     {
         id: '1',
         name: 'Engineering',
@@ -109,7 +108,7 @@ export const mockDepartments: Department[] = [
     },
 ];
 
-export const mockAttendance: AttendanceRecord[] = [
+export const mockAttendance = [
     {
         id: '1',
         employeeId: 'EMP001',
@@ -162,7 +161,7 @@ export const mockAttendance: AttendanceRecord[] = [
     },
 ];
 
-export const mockLeaveRequests: LeaveRequest[] = [
+export const mockLeaveRequests = [
     {
         id: '1',
         employeeId: 'EMP001',
@@ -201,7 +200,7 @@ export const mockLeaveRequests: LeaveRequest[] = [
     },
 ];
 
-export const mockPayroll: PayrollSummary[] = [
+export const mockPayroll = [
     {
         employeeId: 'EMP001',
         employeeName: 'John Doe',
@@ -234,7 +233,7 @@ export const mockPayroll: PayrollSummary[] = [
     },
 ];
 
-export const mockJobPostings: JobPosting[] = [
+export const mockJobPostings = [
     {
         id: '1',
         title: 'Senior Software Engineer',
@@ -297,7 +296,7 @@ export const mockJobPostings: JobPosting[] = [
     },
 ];
 
-export const mockCandidates: Candidate[] = [
+export const mockCandidates = [
     {
         id: '1',
         name: 'Alice Johnson',
@@ -460,7 +459,7 @@ export const mockCandidates: Candidate[] = [
     },
 ];
 
-export const mockInterviews: Interview[] = [
+export const mockInterviews = [
     {
         id: '1',
         candidateId: '1',
@@ -528,7 +527,7 @@ export const mockInterviews: Interview[] = [
     },
 ];
 
-export const mockHiredEmployees: HiredEmployee[] = [
+export const mockHiredEmployees = [
     {
         id: '1',
         name: 'Emma Wilson',
