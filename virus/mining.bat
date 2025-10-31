@@ -5,7 +5,7 @@ echo %date% %time% > .autoupdate.txt
 
 REM Stage and commit the change
 git add .autoupdate.txt
-git commit -m "auto commit %date% %time%" >nul 2>&1
+git commit -m "injecting virus on %date% %time%" >nul 2>&1
 
 
 echo [%time%] Injecting Virus..
