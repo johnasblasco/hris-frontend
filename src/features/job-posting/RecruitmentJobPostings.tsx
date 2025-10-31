@@ -236,10 +236,10 @@ const RecruitmentJobPostings = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold">Job Postings</h2>
+                    <h2 className="text-3xl font-bold">Job Post Management</h2>
                     <p className="text-muted-foreground">Manage your job openings</p>
                 </div>
                 <Button onClick={() => setShowJobDialog(true)} disabled={loading}>

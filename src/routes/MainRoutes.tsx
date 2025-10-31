@@ -9,6 +9,7 @@ import SetupManager from '@/features/setup-manager/SetupManager'
 import Employees from '@/features/employees/Employees'
 import RecruitmentJobPostings from '@/features/job-posting/RecruitmentJobPostings'
 import RecruitmentOnboarding from '@/features/recruitment-onboarding/RecuitmentOnboarding'
+import { PayrollProcessing } from '@/features/payroll-benefits/PayrollProcessing'
 const MainRoutes = () => {
     const routes = useRoutes([
 
@@ -27,6 +28,7 @@ const MainRoutes = () => {
                 { path: "attendance-leaving", element: <AttendanceLeaving /> },
                 { path: "employees", element: <Employees /> },
                 { path: "job-posting", element: <RecruitmentJobPostings /> },
+                { path: "payroll", element: <PayrollProcessing /> },
                 { path: "recruitment-onboarding", element: <RecruitmentOnboarding /> },
             ],
         },

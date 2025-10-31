@@ -8,7 +8,11 @@ const AttendanceLeaving = () => {
     const [activeTab, setActiveTab] = useState('attendance');
 
     return (
-        <div className="space-y-0">
+        <div className="p-6 space-y-0">
+            <div>
+                <h2 className="text-3xl font-bold">Attendance and Leaving </h2>
+                <p className="text-muted-foreground">managing employee's daily attendance and leaving </p>
+            </div>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-0">
                 <div className="border-b px-6 pt-6">
                     <div className="pb-4">
